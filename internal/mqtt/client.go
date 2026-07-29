@@ -52,10 +52,12 @@ func Init(brokerURL, clientID, username, password string) {
 	opts.SetOnConnectHandler(func(c paho.Client) {
 		logger.SystemLog("[MQTT] Connected to broker: " + brokerURL)
 		
-		// Clear the LWT by publishing online status
-		if token := c.Publish("pisowifi/lwt", qos, true, []byte(`{"status":"online"}`)); token.Wait() && token.Error() != nil {
-			logger.SystemLog(fmt.Sprintf("[MQTT] Failed to publish online status: %v", token.Error()))
-		}
+		// Clear the LWT by publishing online status in a non-blocking goroutine
+		go func() {
+			if token := c.Publish("pisowifi/lwt", qos, true, []byte(`{"status":"online"}`)); token.Wait() && token.Error() != nil {
+				logger.SystemLog(fmt.Sprintf("[MQTT] Failed to publish online status: %v", token.Error()))
+			}
+		}()
 	})
 	opts.SetConnectionLostHandler(func(_ paho.Client, err error) {
 		logger.SystemLog(fmt.Sprintf("[MQTT] Connection lost: %v — reconnecting...", err))
