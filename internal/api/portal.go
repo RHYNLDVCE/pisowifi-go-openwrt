@@ -10,6 +10,7 @@ import (
 
 	"pisowifi/internal/config"
 	"pisowifi/internal/db"
+	"pisowifi/internal/network"
 	"pisowifi/internal/services"
 	"pisowifi/internal/state"
 
@@ -38,38 +39,21 @@ func RegisterPortalRoutes(app *fiber.App) {
 	app.Get("/ws/:mac", websocket.New(portalWS))
 
 	// --- Captive portal detection endpoints ---
-	// Android: expects HTTP 204 from /generate_204
-	app.Get("/generate_204", func(c *fiber.Ctx) error {
+	// All of these return a redirect to the portal homepage.
+	// The portal identifies the user from c.IP() — no params needed.
+	portalRedirect := func(c *fiber.Ctx) error {
 		return c.Redirect("http://10.0.0.1/", fiber.StatusFound)
-	})
-	// Android/Chrome: connectivitycheck.gstatic.com proxy
-	app.Get("/gen_204", func(c *fiber.Ctx) error {
-		return c.Redirect("http://10.0.0.1/", fiber.StatusFound)
-	})
-	// Windows: /ncsi.txt (expects "Microsoft NCSI")
-	app.Get("/ncsi.txt", func(c *fiber.Ctx) error {
-		return c.Redirect("http://10.0.0.1/", fiber.StatusFound)
-	})
-	// Windows: /connecttest.txt
-	app.Get("/connecttest.txt", func(c *fiber.Ctx) error {
-		return c.Redirect("http://10.0.0.1/", fiber.StatusFound)
-	})
-	// macOS/iOS: /hotspot-detect.html
-	app.Get("/hotspot-detect.html", func(c *fiber.Ctx) error {
-		return c.Redirect("http://10.0.0.1/", fiber.StatusFound)
-	})
-	app.Get("/library/test/success.html", func(c *fiber.Ctx) error {
-		return c.Redirect("http://10.0.0.1/", fiber.StatusFound)
-	})
-	// Generic redirect
-	app.Get("/redirect", func(c *fiber.Ctx) error {
-		return c.Redirect("http://10.0.0.1/", fiber.StatusFound)
-	})
+	}
+	app.Get("/generate_204", portalRedirect)
+	app.Get("/gen_204", portalRedirect)
+	app.Get("/ncsi.txt", portalRedirect)
+	app.Get("/connecttest.txt", portalRedirect)
+	app.Get("/hotspot-detect.html", portalRedirect)
+	app.Get("/library/test/success.html", portalRedirect)
+	app.Get("/redirect", portalRedirect)
 
 	// Catch-all — must be last
-	app.Get("/*", func(c *fiber.Ctx) error {
-		return c.Redirect("http://10.0.0.1/", fiber.StatusFound)
-	})
+	app.Get("/*", portalRedirect)
 }
 
 // ---------------------------------------------------------------------------
@@ -77,33 +61,33 @@ func RegisterPortalRoutes(app *fiber.App) {
 // ---------------------------------------------------------------------------
 
 func portalHome(c *fiber.Ctx) error {
-	// Force the URL in the browser to be 10.0.0.1 to avoid breaking when authorized
+	// Force the URL in the browser to be 10.0.0.1
 	host := c.Hostname()
 	if host != "10.0.0.1" && host != "10.0.0.2" {
 		return c.Redirect("http://10.0.0.1/", fiber.StatusFound)
 	}
 
-	clientMAC := c.Query("mac")
-	clientIP := c.Query("ip")
+	// Identify client from source IP — same method as the old system.
+	// c.IP() returns the real client IP because the router no longer masquerades
+	// LAN→OrangePi traffic (hairpin masquerade was removed from nftables).
+	clientIP := c.IP()
+	clientMAC := network.GetMACByIP(clientIP)
 
 	if clientMAC == "" {
-		// Auto-trigger the CGI MAC Injector on the router by hitting a non-existent path
+		// ARP cache miss — send user back through the captive portal interceptor
+		// which will trigger a fresh redirect once the DHCP/ARP data arrives.
 		return c.Redirect("http://10.0.0.1:8080/trigger", fiber.StatusFound)
 	}
 
-	if clientMAC != "" && clientMAC != "00:00:00:00:00:00" && clientMAC != "unknown" {
-		if _, ok := state.Users.Get(clientMAC); !ok {
-			state.Users.Set(clientMAC, &state.UserRecord{
-				Status: "new", Time: 0, Balance: 0, FreeClaimed: 0, Points: 0,
-			})
-		}
-		state.Users.UpdateField(clientMAC, func(u *state.UserRecord) {
-			if clientIP != "" {
-				u.IP = clientIP
-			}
-			u.LastActive = float64(time.Now().UnixNano()) / 1e9
+	if _, ok := state.Users.Get(clientMAC); !ok {
+		state.Users.Set(clientMAC, &state.UserRecord{
+			Status: "new", Time: 0, Balance: 0, FreeClaimed: 0, Points: 0,
 		})
 	}
+	state.Users.UpdateField(clientMAC, func(u *state.UserRecord) {
+		u.IP = clientIP
+		u.LastActive = float64(time.Now().UnixNano()) / 1e9
+	})
 
 	// Banners
 	cfg := config.Get()
@@ -167,24 +151,31 @@ func portalHome(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 
 func portalStatus(c *fiber.Ctx) error {
-	mac := c.Query("mac")
+	// Derive MAC from real client IP — same as portalHome.
+	clientIP := c.IP()
+	clientMAC := network.GetMACByIP(clientIP)
+	if clientMAC == "" {
+		// Fallback: accept ?mac= from JS for users who loaded the page before
+		// the ARP cache was populated (rare race on first connect).
+		clientMAC = c.Query("mac")
+	}
 	cfg := config.Get()
 
 	user := &state.UserRecord{Status: "new"}
-	if u, ok := state.Users.Get(mac); ok {
+	if u, ok := state.Users.Get(clientMAC); ok {
 		user = u
 	}
-	if c.IP() != "" {
-		state.Users.UpdateField(mac, func(u *state.UserRecord) {
-			u.IP = c.IP()
+	if clientIP != "" && clientMAC != "" {
+		state.Users.UpdateField(clientMAC, func(u *state.UserRecord) {
+			u.IP = clientIP
 		})
 	}
 
 	slotUser := state.GetSlotUser()
-	isBusy := slotUser != "" && slotUser != mac
+	isBusy := slotUser != "" && slotUser != clientMAC
 
 	slotSecsLeft := 0
-	if slotUser == mac {
+	if slotUser == clientMAC {
 		left := cfg.SlotExpiryTimestamp - float64(time.Now().Unix())
 		if left < 0 {
 			left = 0
@@ -213,14 +204,22 @@ func portalStatus(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 
 func portalWS(c *websocket.Conn) {
+	// The MAC in the URL (/ws/:mac) was rendered server-side by the template
+	// (derived from the ARP cache), so it is already authoritative.
+	// We additionally validate it against the current source IP as a sanity check.
 	mac := c.Params("mac")
 	state.Manager.Connect(mac, c)
 	defer state.Manager.Disconnect(mac)
 
-	if c.RemoteAddr() != nil {
-		ip := strings.Split(c.RemoteAddr().String(), ":")[0]
+	// Update stored IP from the WS connection's real source IP.
+	clientIP := c.IP() // c.IP() in the WS upgrader is the raw TCP source IP
+	if clientIP == "" || clientIP == "10.0.0.1" {
+		// Fallback: derive from ARP cache if IP is somehow the router's
+		clientIP = network.GetIPByMAC(mac)
+	}
+	if clientIP != "" {
 		state.Users.UpdateField(mac, func(u *state.UserRecord) {
-			u.IP = ip
+			u.IP = clientIP
 			u.LastActive = float64(time.Now().UnixNano()) / 1e9
 		})
 	}
@@ -240,13 +239,19 @@ func portalWS(c *websocket.Conn) {
 // ---------------------------------------------------------------------------
 
 func connectUser(c *fiber.Ctx) error {
-	mac := c.Query("mac")
+	mac := resolveMAC(c)
+	if mac == "" {
+		return c.JSON(fiber.Map{"result": "fail"})
+	}
 	result := services.ConnectUser(mac)
 	return c.JSON(fiber.Map{"result": result})
 }
 
 func pauseUser(c *fiber.Ctx) error {
-	mac := c.Query("mac")
+	mac := resolveMAC(c)
+	if mac == "" {
+		return c.JSON(fiber.Map{"result": "fail"})
+	}
 	result := services.PauseUser(mac)
 	return c.JSON(fiber.Map{"result": result})
 }
@@ -256,13 +261,19 @@ func pauseUser(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 
 func enableSlot(c *fiber.Ctx) error {
-	mac := c.Query("mac")
+	mac := resolveMAC(c)
+	if mac == "" {
+		return c.JSON(fiber.Map{"result": "fail"})
+	}
 	result, _, _, _, _ := services.EnableSlot(mac)
 	return c.JSON(fiber.Map{"result": result})
 }
 
 func cancelSlot(c *fiber.Ctx) error {
-	mac := c.Query("mac")
+	mac := resolveMAC(c)
+	if mac == "" {
+		return c.JSON(fiber.Map{"result": "fail"})
+	}
 	if services.CancelSlot(mac) {
 		return c.JSON(fiber.Map{"result": "success"})
 	}
@@ -274,7 +285,10 @@ func cancelSlot(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 
 func claimFreeTime(c *fiber.Ctx) error {
-	mac := c.Query("mac")
+	mac := resolveMAC(c)
+	if mac == "" {
+		return c.JSON(fiber.Map{"result": "fail"})
+	}
 	result := services.ClaimFreeTime(mac)
 	return c.JSON(fiber.Map{"result": result})
 }
@@ -284,16 +298,18 @@ func claimFreeTime(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 
 func rewardsPage(c *fiber.Ctx) error {
-	mac := c.Query("mac")
+	mac := network.GetMACByIP(c.IP())
+	if mac == "" {
+		// Fallback: accept ?mac= in case of ARP cache miss
+		mac = c.Query("mac")
+	}
 	if mac == "" {
 		return c.Redirect("http://10.0.0.1:8080/trigger", fiber.StatusFound)
 	}
 	cfg := config.Get()
 
-	if mac != "" {
-		if _, ok := state.Users.Get(mac); !ok {
-			state.Users.Set(mac, &state.UserRecord{Status: "new"})
-		}
+	if _, ok := state.Users.Get(mac); !ok {
+		state.Users.Set(mac, &state.UserRecord{Status: "new"})
 	}
 
 	user := &state.UserRecord{}
@@ -324,12 +340,13 @@ func redeemPoints(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"status": "error", "message": "Invalid body"})
 	}
 
-	clientIP := c.Query("ip")
-	mac := c.Query("mac")
+	mac := resolveMAC(c)
 	if mac == "" {
 		return c.JSON(fiber.Map{"status": "error", "message": "MAC address missing"})
 	}
-	
+	// Pass the verified IP from the ARP cache (not the URL param) to services
+	clientIP := network.GetIPByMAC(mac)
+
 	status, msg := services.RedeemPoints(mac, clientIP, body.PromoID)
 	return c.JSON(fiber.Map{"status": status, "message": msg})
 }
@@ -347,7 +364,7 @@ func generateVoucher(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"status": "error", "message": "Invalid body"})
 	}
 
-	mac := c.Query("mac")
+	mac := resolveMAC(c)
 	if mac == "" {
 		return c.JSON(fiber.Map{"status": "error", "message": "MAC address missing"})
 	}
@@ -367,7 +384,7 @@ func redeemVoucher(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"status": "error", "message": "Invalid body"})
 	}
 
-	mac := c.Query("mac")
+	mac := resolveMAC(c)
 	if mac == "" {
 		return c.JSON(fiber.Map{"status": "error", "message": "MAC address missing"})
 	}
@@ -382,6 +399,24 @@ func redeemVoucher(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+// resolveMAC derives the authoritative MAC for the requesting client.
+//
+// Security model (identical to old on-router PisoWifi):
+//   - Primary: c.IP() → router ARP cache (via MQTT-backed arpcache).
+//     c.IP() returns the REAL client IP because the hairpin masquerade was
+//     removed from nftables. The ARP cache is router-controlled and not
+//     user-forgeable.
+//   - Fallback: ?mac= param, only accepted when the ARP cache has no entry
+//     yet (rare first-connect race before DHCP hook fires).
+func resolveMAC(c *fiber.Ctx) string {
+	// Primary: IP → ARP cache (authoritative)
+	if mac := network.GetMACByIP(c.IP()); mac != "" {
+		return mac
+	}
+	// Fallback: accept ?mac= only for brand-new devices not yet in ARP cache
+	return c.Query("mac")
+}
 
 func buildBannerList(order []string) []string {
 	bannerDir := "static/banners/set"

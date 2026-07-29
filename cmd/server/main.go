@@ -70,7 +70,15 @@ func main() {
 		})
 	}
 
-	// 6b. Init MQTT client — connects to the OpenWrt router broker.
+	// 6b. Setup policy routing — forces port-80 HTTP replies from the Go server
+	// to route through the OpenWrt router (10.0.0.1) even for same-subnet clients.
+	// This is the counterpart to removing the hairpin masquerade rule in nftables:
+	// the router's conntrack sees the return packet and applies reverse DNAT so
+	// the browser sees the reply as coming from 10.0.0.1 (as expected).
+	// Result: c.IP() in Fiber returns the real client IP, not 10.0.0.1.
+	setupPolicyRouting()
+
+	// 6c. Init MQTT client — connects to the OpenWrt router broker.
 	// We pass network.InitFirewall so that the nftables rules are sent automatically
 	// on startup, AND whenever the router reboots/reconnects.
 	mqtt.Init(
@@ -165,4 +173,42 @@ func main() {
 	if err := app.Listen(":80"); err != nil {
 		logger.SystemLog(fmt.Sprintf("Server error: %v", err))
 	}
+}
+
+// setupPolicyRouting configures Linux policy routing on the Orange Pi so that
+// HTTP replies from the portal (port 80) are always routed through the OpenWrt
+// router, even when the client is on the same subnet as the Orange Pi.
+//
+// Why this is needed:
+//   When a user requests http://10.0.0.1/, the router DNATs the packet to
+//   10.0.0.2:80 WITHOUT masquerading the source IP (so c.IP() returns the real
+//   client IP). On the return path, the OrangePi's kernel would normally try to
+//   reach the client directly (same-subnet ARP), bypassing the router. The router
+//   would never see the return packet and conntrack can't apply reverse DNAT,
+//   so the client receives a reply from 10.0.0.2 instead of 10.0.0.1 and
+//   the connection breaks. Policy routing fixes this by forcing all port-80
+//   replies through the router, which applies reverse DNAT transparently.
+func setupPolicyRouting() {
+	gw := config.RouterIP
+
+	cmds := [][]string{
+		// Create routing table 80: all traffic in this table goes via the router
+		{"ip", "route", "replace", "table", "80", "default", "via", gw},
+		// Rule: packets marked 0x50 (80) use table 80
+		{"ip", "rule", "add", "fwmark", "80", "table", "80", "priority", "100"},
+	}
+	for _, cmd := range cmds {
+		exec.Command(cmd[0], cmd[1:]...).Run()
+	}
+
+	// Mark outgoing TCP packets from port 80 (portal replies) so they use table 80.
+	// Check first to avoid duplicate rules on restart.
+	checkCmd := exec.Command("iptables", "-t", "mangle", "-C", "OUTPUT",
+		"-p", "tcp", "--sport", "80", "-j", "MARK", "--set-mark", "80")
+	if checkCmd.Run() != nil {
+		exec.Command("iptables", "-t", "mangle", "-A", "OUTPUT",
+			"-p", "tcp", "--sport", "80", "-j", "MARK", "--set-mark", "80").Run()
+	}
+
+	logger.SystemLog(fmt.Sprintf("[ROUTING] Policy routing active: port-80 replies via %s", gw))
 }

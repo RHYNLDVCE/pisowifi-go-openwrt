@@ -15,8 +15,6 @@ package network
 
 import (
 	"encoding/json"
-	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -68,6 +66,10 @@ func InitFirewall() {
 
 	// Subscribe to traffic stats published by the router
 	subscribeTraffic()
+
+	// Subscribe to pisowifi/arp and request a full MAC→IP dump from the router.
+	// This must run AFTER mqtt.Init() so the subscription takes effect immediately.
+	InitARPCache()
 }
 
 // ReloadFirewall sends a reload command to the router (e.g. after config change)
@@ -120,7 +122,10 @@ func AllowUser(mac, ip string) {
 func BlockUser(mac, ip string) {
 	resolvedIP := ip
 	if resolvedIP == "" {
-		resolvedIP = resolveIPFromARP(mac)
+		// Fall back to the MQTT-driven ARP cache (populated by the router's
+		// DHCP hook). This is the correct source — the OrangePi's own ARP
+		// table never sees client traffic.
+		resolvedIP = GetIPByMAC(mac)
 	}
 	if err := mqttcmd.BlockUser(mac, resolvedIP); err != nil {
 		logger.SystemLog("[FIREWALL] BlockUser MQTT error for " + mac + ": " + err.Error())
@@ -206,25 +211,3 @@ func GetAllTraffic() map[string][2]int64 {
 	return out
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-// resolveIPFromARP reads /proc/net/arp to find the IP for a MAC address.
-// Used as a fallback when ip is empty on BlockUser.
-func resolveIPFromARP(mac string) string {
-	data, err := os.ReadFile("/proc/net/arp")
-	if err != nil {
-		return ""
-	}
-	macLower := strings.ToLower(mac)
-	for _, line := range strings.Split(string(data), "\n") {
-		if strings.Contains(strings.ToLower(line), macLower) {
-			parts := strings.Fields(line)
-			if len(parts) > 0 {
-				return parts[0]
-			}
-		}
-	}
-	return ""
-}

@@ -18,6 +18,11 @@ import (
 var (
 	LANInterface = "br0"
 	WANInterface  = "eth0"
+
+	// RouterIP is the LAN IP of the OpenWrt router.
+	// Used for policy routing so HTTP replies go through the router (preserving
+	// real client source IPs after removing hairpin masquerade).
+	RouterIP = "10.0.0.1"
 )
 
 const (
@@ -63,6 +68,7 @@ func ReloadSecrets() {
 	AdminPassword = getEnv("ADMIN_PASSWORD", "admin123")
 	LANInterface = getEnv("LAN_INTERFACE", "br0")
 	WANInterface = getEnv("WAN_INTERFACE", "eth0")
+	RouterIP = getEnv("ROUTER_IP", "10.0.0.1")
 
 	// MQTT broker (runs on the OpenWrt router)
 	MQTTBroker = getEnv("MQTT_BROKER", "tcp://10.0.0.1:1883")

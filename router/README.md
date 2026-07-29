@@ -62,7 +62,33 @@ rc-service mosquitto start
 
 ---
 
-## Step 3 — Deploy the Subscriber Script
+## Step 3 — Deploy the DHCP Hook (MAC→IP Sync)
+
+This script is called by dnsmasq on every DHCP lease event and publishes the
+client's MAC and IP to the MQTT broker so the Orange Pi always knows who is online.
+
+```sh
+# Copy the hook script to the router
+scp dhcp_hook.sh root@10.0.0.1:/etc/dnsmasq.d/pisowifi_dhcp_hook.sh
+
+# Make it executable
+ssh root@10.0.0.1 "chmod +x /etc/dnsmasq.d/pisowifi_dhcp_hook.sh"
+
+# Tell dnsmasq to call it on every lease event
+# (adds the dhcp-script option to dnsmasq.conf)
+ssh root@10.0.0.1 "echo 'dhcp-script=/etc/dnsmasq.d/pisowifi_dhcp_hook.sh' >> /etc/dnsmasq.conf"
+
+# Restart dnsmasq to apply
+ssh root@10.0.0.1 "/etc/init.d/dnsmasq restart"
+```
+
+> ✅ From this point on, whenever any client gets a DHCP lease the router will
+> publish `pisowifi/arp {"mac":"...","ip":"...","action":"add"}` to the MQTT broker.
+> The Orange Pi subscribes to this topic and updates its in-memory ARP cache in real time.
+
+---
+
+## Step 4 — Deploy the Subscriber Script
 
 ```sh
 # Copy the subscriber script
@@ -80,7 +106,7 @@ ssh root@10.0.0.1 "chmod +x /etc/init.d/pisowifi_mqtt && rc-update add pisowifi_
 
 ---
 
-## Step 4 — Set Orange Pi Static IP
+## Step 5 — Set Orange Pi Static IP
 
 On the router's DHCP server, assign `10.0.0.2` as a static lease for the Orange Pi's MAC address.
 
@@ -98,7 +124,7 @@ rc-service dnsmasq restart
 
 ---
 
-## Step 5 — Update Orange Pi `.env`
+## Step 6 — Update Orange Pi `.env`
 
 Edit `.env` on the Orange Pi:
 
@@ -111,7 +137,7 @@ MQTT_PASSWORD=<same_password_you_set_in_step_2>
 
 ---
 
-## Step 6 — Test End-to-End
+## Step 7 — Test End-to-End
 
 ### On the router, watch MQTT traffic:
 ```sh
@@ -126,6 +152,14 @@ pisowifi/firewall/init  {"lan":"br-lan","wan":"eth0","custom_ttl":1,...}
 ### Verify nftables was applied:
 ```sh
 nft list set ip pisowifi authorized_users
+```
+
+### Watch the ARP sync:
+```sh
+# On the router — watch DHCP events arrive as pisowifi/arp messages
+mosquitto_sub -h localhost -t 'pisowifi/arp' -v
+# Expected on each device connect:
+# pisowifi/arp {"mac":"aa:bb:cc:dd:ee:ff","ip":"10.0.1.5","action":"add"}
 ```
 
 ### Insert a coin on a connected device and watch:
@@ -149,3 +183,5 @@ nft list set ip pisowifi authorized_users
 | `jsonfilter: command not found` | `apk add jsonfilter` |
 | Users can't reach portal | Check DNAT rule in `nat_prerouting` chain — ensure `10.0.0.2` is reachable from LAN |
 | Subscriber dies after router reboot | Check `rc-update add pisowifi_mqtt` was run |
+| Orange Pi shows wrong/no IP for users | Check DHCP hook is installed and dnsmasq restarted: `logread \| grep pisowifi` |
+| No `pisowifi/arp` messages on reconnect | Orange Pi publishes `pisowifi/arp/request` — check router subscriber is running |

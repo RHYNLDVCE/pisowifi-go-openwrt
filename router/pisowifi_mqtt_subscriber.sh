@@ -14,6 +14,10 @@
 #   4. chmod +x /etc/init.d/pisowifi_mqtt
 #   5. rc-update add pisowifi_mqtt
 #   6. rc-service pisowifi_mqtt start
+#   7. Copy dhcp_hook.sh to /etc/dnsmasq.d/pisowifi_dhcp_hook.sh
+#   8. chmod +x /etc/dnsmasq.d/pisowifi_dhcp_hook.sh
+#   9. Add 'dhcp-script=/etc/dnsmasq.d/pisowifi_dhcp_hook.sh' to /etc/dnsmasq.conf
+#  10. /etc/init.d/dnsmasq restart
 #
 # Dependencies (install on router):
 #   apk update
@@ -34,6 +38,40 @@ get_uid() {
     echo $(( c * 256 + d ))
 }
 
+# Dump the router's ARP table to the Orange Pi via MQTT.
+# Called on pisowifi/arp/request — lets the OrangePi rebuild its MAC->IP cache
+# after startup or reconnect.
+# Each entry is published as a retained pisowifi/arp message so the Orange Pi
+# gets them immediately even if it subscribes slightly late.
+dump_arp_table() {
+    logger -t pisowifi "[ARP] Dumping ARP table to Orange Pi..."
+    local count=0
+    # /proc/net/arp columns: IP HWtype Flags HWaddr Mask Device
+    # Skip the header line, skip incomplete (Flags != 0x2) entries
+    while read -r ip hwtype flags mac mask dev; do
+        # Skip header row
+        [ "$ip" = "IP" ] && continue
+        # Skip incomplete/proxy entries (flags must be 0x2 = complete)
+        [ "$flags" != "0x2" ] && continue
+        # Skip the Orange Pi's own entry and the router itself
+        [ "$ip" = "10.0.0.1" ] && continue
+        [ "$ip" = "10.0.0.2" ] && continue
+        # Normalise MAC to lowercase
+        mac=$(echo "$mac" | tr '[:upper:]' '[:lower:]')
+        PAYLOAD="{\"mac\":\"${mac}\",\"ip\":\"${ip}\",\"action\":\"add\"}"
+        mosquitto_pub \
+            -h "$MQTT_HOST" \
+            -p "$MQTT_PORT" \
+            -t "pisowifi/arp" \
+            -q 1 \
+            -r \
+            -m "$PAYLOAD" \
+            2>/dev/null
+        count=$(( count + 1 ))
+    done < /proc/net/arp
+    logger -t pisowifi "[ARP] Dumped $count entries to Orange Pi."
+}
+
 # Apply full nftables ruleset from a JSON payload.
 # Called on pisowifi/firewall/init and pisowifi/firewall/reload
 apply_firewall_init() {
@@ -51,19 +89,19 @@ apply_firewall_init() {
     logger -t pisowifi "[FIREWALL] Applying nftables init: LAN=$LAN WAN=$WAN"
 
     # ----------------------------------------------------------------
-    # 1. Setup a lightweight uhttpd interceptor on the router
-    # This solves the "Hairpin NAT / MAC hiding" problem perfectly.
+    # 1. Setup a lightweight uhttpd interceptor on the router.
+    # Unauthorized users hit this and get redirected to the portal.
+    # The OrangePi identifies the user server-side via c.IP() -> ARP cache,
+    # so no MAC/IP injection into the URL is needed.
     # ----------------------------------------------------------------
     mkdir -p /www_portal/cgi-bin
     cat << 'HTM' > /www_portal/cgi-bin/redirect
 #!/bin/sh
-IP="$REMOTE_ADDR"
-MAC=$(cat /proc/net/arp | grep "^$IP " | awk '{print $4}')
-if [ -z "$MAC" ]; then
-    MAC="unknown"
-fi
+# Redirect unauthorized users to the captive portal.
+# The OrangePi (10.0.0.2) identifies the user from the source IP
+# after DNAT preserves it (no hairpin masquerade in nftables).
 echo "Status: 302 Found"
-echo "Location: http://10.0.0.1/?mac=$MAC&ip=$IP"
+echo "Location: http://10.0.0.1/"
 echo ""
 HTM
     chmod +x /www_portal/cgi-bin/redirect
@@ -189,7 +227,10 @@ table ip pisowifi {
         # Do not intercept the Orange Pi's own internet traffic!
         iifname "${LAN}" ip saddr 10.0.0.2 accept
 
-        # Make the portal explicitly accessible at 10.0.0.1 (After MAC injection)
+        # Portal at 10.0.0.1:80 — DNAT to OrangePi.
+        # Source IP is preserved (no hairpin masquerade) so c.IP() on OrangePi
+        # returns the real client IP. OrangePi uses it to look up MAC from
+        # its ARP cache (populated by the DHCP hook via MQTT).
         iifname "${LAN}" ip daddr 10.0.0.1 tcp dport 80 dnat to 10.0.0.2:80
 
         # Authorized users: send DNS to Cloudflare
@@ -200,7 +241,7 @@ table ip pisowifi {
         iifname "${LAN}" ether saddr != @authorized_users udp dport 53 dnat to 10.0.0.1:53
         iifname "${LAN}" ether saddr != @authorized_users tcp dport 53 dnat to 10.0.0.1:53
         
-        # Unauthorized users: intercept HTTP/HTTPS via local router uhttpd (which 302 redirects back to 10.0.0.1 with MAC)
+        # Unauthorized users: intercept HTTP/HTTPS via local router uhttpd (302 → portal)
         iifname "${LAN}" ether saddr != @authorized_users ip daddr != 10.0.0.1 tcp dport 80 redirect to :8080
         iifname "${LAN}" ether saddr != @authorized_users ip daddr != 10.0.0.1 tcp dport 443 redirect to :8080
     }
@@ -208,8 +249,11 @@ table ip pisowifi {
     chain nat_postrouting {
         type nat hook postrouting priority srcnat; policy accept;
         
-        # Hairpin NAT (Required so 10.0.0.1 DNATs back to Orange Pi without asymmetric routing)
-        ip saddr 10.0.0.0/16 oifname "${LAN}" ip daddr 10.0.0.2 masquerade
+        # NOTE: There is intentionally NO masquerade rule for LAN→OrangePi traffic.
+        # The old hairpin masquerade was removed so that the OrangePi can see the
+        # real client source IP via c.IP(). The OrangePi uses policy routing to
+        # force its HTTP replies back through the router, where conntrack applies
+        # reverse DNAT transparently. See cmd/server/main.go:setupPolicyRouting().
         
         oifname "${WAN}" masquerade
     }
@@ -327,6 +371,16 @@ mosquitto_sub \
                 tc class del dev "$LAN" parent 1:ffff classid "1:${UID_HEX}" 2>/dev/null || true
                 logger -t pisowifi "[SPEED] Removed limit for $IP"
             fi
+            ;;
+
+        # ----------------------------------------------------------------
+        # pisowifi/arp/request
+        # Orange Pi sends this on startup or reconnect to ask the router
+        # to dump its full ARP table (MAC→IP) as retained pisowifi/arp
+        # messages so the OrangePi can rebuild its in-memory cache.
+        # ----------------------------------------------------------------
+        "pisowifi/arp/request")
+            dump_arp_table
             ;;
 
         # ----------------------------------------------------------------
