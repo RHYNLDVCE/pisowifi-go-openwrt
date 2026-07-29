@@ -68,8 +68,14 @@ echo ""
 HTM
     chmod +x /www_portal/cgi-bin/redirect
 
-    uci set uhttpd.portal=uhttpd 2>/dev/null || true
-    uci add_list uhttpd.portal.listen_http='0.0.0.0:8080' 2>/dev/null || true
+    # Ensure root path redirects to the CGI script instantly
+    cat << 'HTM' > /www_portal/index.html
+<html><head><meta http-equiv="refresh" content="0; url=/cgi-bin/redirect"></head><body></body></html>
+HTM
+
+    uci delete uhttpd.portal 2>/dev/null || true
+    uci set uhttpd.portal=uhttpd
+    uci add_list uhttpd.portal.listen_http='0.0.0.0:8080'
     uci set uhttpd.portal.home='/www_portal'
     uci set uhttpd.portal.error_page='/cgi-bin/redirect'
     uci commit uhttpd

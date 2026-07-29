@@ -87,8 +87,8 @@ func portalHome(c *fiber.Ctx) error {
 	clientIP := c.Query("ip")
 
 	if clientMAC == "" {
-		// Auto-trigger the CGI MAC Injector on the router
-		return c.Redirect("http://10.0.0.1:8080/", fiber.StatusFound)
+		// Auto-trigger the CGI MAC Injector on the router by hitting a non-existent path
+		return c.Redirect("http://10.0.0.1:8080/trigger", fiber.StatusFound)
 	}
 
 	if clientMAC != "" && clientMAC != "00:00:00:00:00:00" && clientMAC != "unknown" {
@@ -286,7 +286,7 @@ func claimFreeTime(c *fiber.Ctx) error {
 func rewardsPage(c *fiber.Ctx) error {
 	mac := c.Query("mac")
 	if mac == "" {
-		return c.Redirect("http://10.0.0.1:8080/", fiber.StatusFound)
+		return c.Redirect("http://10.0.0.1:8080/trigger", fiber.StatusFound)
 	}
 	cfg := config.Get()
 
