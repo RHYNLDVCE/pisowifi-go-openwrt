@@ -23,14 +23,14 @@ via MQTT commands from the Orange Pi.
 SSH into your router and run:
 
 ```sh
-apk update
-apk add mosquitto mosquitto-client-ssl kmod-nft-core nftables tc-full kmod-sched-cake kmod-sched-core kmod-ifb conntrack
+opkg update
+opkg install mosquitto mosquitto-client-ssl kmod-nft-core nftables tc-full kmod-sched-cake kmod-sched-core kmod-ifb conntrack
 ```
 
 > **Note:** `jsonfilter` is already built into OpenWrt.
 > Run:
 > ```sh
-> apk add kmod-nf-conntrack
+> opkg install kmod-nf-conntrack
 > ```
 > Then verify the userspace command is available:
 > ```sh
@@ -48,14 +48,14 @@ apk add mosquitto mosquitto-client-ssl kmod-nft-core nftables tc-full kmod-sched
 mkdir -p /etc/mosquitto /tmp/mosquitto
 
 # Copy config (run this from your laptop)
-scp mosquitto.conf root@10.0.0.1:/etc/mosquitto/mosquitto.conf
+scp -O mosquitto.conf root@10.0.0.1:/etc/mosquitto/mosquitto.conf
 
 # On the router — create the pisowifi MQTT user password
 mosquitto_passwd -c /etc/mosquitto/passwd pisowifi
 
 # Enable and start mosquitto
-rc-service mosquitto enable
-rc-service mosquitto start
+/etc/init.d/mosquitto enable
+/etc/init.d/mosquitto start
 ```
 
 > ⚠️ **The password you set here must match `MQTT_PASSWORD` in the Orange Pi's `.env` file and in `pisowifi_mqtt_subscriber.sh`.**
@@ -69,14 +69,13 @@ client's MAC and IP to the MQTT broker so the Orange Pi always knows who is onli
 
 ```sh
 # Copy the hook script to the router
-scp dhcp_hook.sh root@10.0.0.1:/etc/dnsmasq.d/pisowifi_dhcp_hook.sh
+scp -O dhcp_hook.sh root@10.0.0.1:/etc/dnsmasq.d/pisowifi_dhcp_hook.sh
 
 # Make it executable
 ssh root@10.0.0.1 "chmod +x /etc/dnsmasq.d/pisowifi_dhcp_hook.sh"
 
 # Tell dnsmasq to call it on every lease event
-# (adds the dhcp-script option to dnsmasq.conf)
-ssh root@10.0.0.1 "echo 'dhcp-script=/etc/dnsmasq.d/pisowifi_dhcp_hook.sh' >> /etc/dnsmasq.conf"
+ssh root@10.0.0.1 "mkdir -p /etc/dnsmasq.d && echo 'dhcp-script=/etc/dnsmasq.d/pisowifi_dhcp_hook.sh' >> /etc/dnsmasq.conf"
 
 # Restart dnsmasq to apply
 ssh root@10.0.0.1 "/etc/init.d/dnsmasq restart"
@@ -92,16 +91,16 @@ ssh root@10.0.0.1 "/etc/init.d/dnsmasq restart"
 
 ```sh
 # Copy the subscriber script
-scp pisowifi_mqtt_subscriber.sh root@10.0.0.1:/usr/bin/pisowifi_mqtt_subscriber.sh
+scp -O pisowifi_mqtt_subscriber.sh root@10.0.0.1:/usr/bin/pisowifi_mqtt_subscriber.sh
 
 # Make it executable
 ssh root@10.0.0.1 "chmod +x /usr/bin/pisowifi_mqtt_subscriber.sh"
 
 # Copy the init.d service
-scp pisowifi_mqtt.init root@10.0.0.1:/etc/init.d/pisowifi_mqtt
+scp -O pisowifi_mqtt.init root@10.0.0.1:/etc/init.d/pisowifi_mqtt
 
-# Make it executable, add to startup, and start it
-ssh root@10.0.0.1 "chmod +x /etc/init.d/pisowifi_mqtt && rc-update add pisowifi_mqtt && rc-service pisowifi_mqtt start"
+# Make it executable, enable on boot, and start it
+ssh root@10.0.0.1 "chmod +x /etc/init.d/pisowifi_mqtt && /etc/init.d/pisowifi_mqtt enable && /etc/init.d/pisowifi_mqtt start"
 ```
 
 ---
@@ -182,6 +181,6 @@ nft list set ip pisowifi authorized_users
 | `nft: Operation not permitted` | Make sure `kmod-nft-core` and `nftables` are installed: `apk add kmod-nft-core nftables` |
 | `jsonfilter: command not found` | `apk add jsonfilter` |
 | Users can't reach portal | Check DNAT rule in `nat_prerouting` chain — ensure `10.0.0.2` is reachable from LAN |
-| Subscriber dies after router reboot | Check `rc-update add pisowifi_mqtt` was run |
+| Subscriber dies after router reboot | Check `/etc/init.d/pisowifi_mqtt enable` was run |
 | Orange Pi shows wrong/no IP for users | Check DHCP hook is installed and dnsmasq restarted: `logread \| grep pisowifi` |
 | No `pisowifi/arp` messages on reconnect | Orange Pi publishes `pisowifi/arp/request` — check router subscriber is running |

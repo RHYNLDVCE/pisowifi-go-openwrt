@@ -12,16 +12,16 @@
 #   2. chmod +x /usr/bin/pisowifi_mqtt_subscriber.sh
 #   3. Copy pisowifi_mqtt.init to /etc/init.d/pisowifi_mqtt
 #   4. chmod +x /etc/init.d/pisowifi_mqtt
-#   5. rc-update add pisowifi_mqtt
-#   6. rc-service pisowifi_mqtt start
+#   5. /etc/init.d/pisowifi_mqtt enable
+#   6. /etc/init.d/pisowifi_mqtt start
 #   7. Copy dhcp_hook.sh to /etc/dnsmasq.d/pisowifi_dhcp_hook.sh
 #   8. chmod +x /etc/dnsmasq.d/pisowifi_dhcp_hook.sh
 #   9. Add 'dhcp-script=/etc/dnsmasq.d/pisowifi_dhcp_hook.sh' to /etc/dnsmasq.conf
 #  10. /etc/init.d/dnsmasq restart
 #
 # Dependencies (install on router):
-#   apk update
-#   apk add mosquitto mosquitto-client-ssl kmod-nft-core nftables tc-full kmod-sched-cake kmod-sched-core kmod-ifb conntrack
+#   opkg update
+#   opkg add mosquitto mosquitto-client-ssl kmod-nft-core nftables tc-full kmod-sched-cake kmod-sched-core kmod-ifb conntrack
 #   (jsonfilter is already built into OpenWrt)
 
 MQTT_HOST="10.0.0.1"
