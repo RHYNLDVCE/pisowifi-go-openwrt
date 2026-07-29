@@ -40,6 +40,10 @@ func Init(brokerURL, clientID, username, password string, onConnectCb func()) {
 	// Username/password auth is not used — access is secured by a firewall rule
 	// on the router that only allows the Orange Pi (10.0.0.2) to reach port 1883.
 
+	// Fast KeepAlive & PingTimeout so connection drop is detected in ~3 seconds
+	opts.SetKeepAlive(3 * time.Second)
+	opts.SetPingTimeout(2 * time.Second)
+
 	// Auto-reconnect is handled by paho natively
 	opts.SetAutoReconnect(true)
 	opts.SetMaxReconnectInterval(reconnectWait)
@@ -64,7 +68,20 @@ func Init(brokerURL, clientID, username, password string, onConnectCb func()) {
 		}()
 	})
 	opts.SetConnectionLostHandler(func(_ paho.Client, err error) {
-		logger.SystemLog(fmt.Sprintf("[MQTT] Connection lost: %v — reconnecting...", err))
+		logger.SystemLog(fmt.Sprintf("[MQTT] Connection to router lost: %v — freezing active user timers...", err))
+		now := float64(time.Now().UnixNano()) / 1e9
+		state.Users.Range(func(mac string, u *state.UserRecord) {
+			if u.Status == "connected" && u.ExpiresAt > 0 {
+				rem := u.ExpiresAt - now
+				if rem < 0 {
+					rem = 0
+				}
+				state.Users.UpdateField(mac, func(ur *state.UserRecord) {
+					ur.Time = int(rem)
+					ur.ExpiresAt = 0
+				})
+			}
+		})
 	})
 	opts.SetReconnectingHandler(func(_ paho.Client, _ *paho.ClientOptions) {
 		logger.SystemLog("[MQTT] Attempting to reconnect to broker...")

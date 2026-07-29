@@ -75,11 +75,16 @@ func TickUsers(ticks int) {
 			if !routerConnected {
 				// FAILSAFE: Freeze the timer while disconnected from router
 				if u.ExpiresAt != 0 {
+					rem := u.ExpiresAt - now
+					if rem < 0 {
+						rem = 0
+					}
 					state.Users.UpdateField(mac, func(u *state.UserRecord) {
+						u.Time = int(rem)
 						u.ExpiresAt = 0
 					})
 				}
-				// Skip time decrement
+				// Skip time decrement while router is offline
 			} else {
 				if u.ExpiresAt == 0 {
 					// Safety: reconstruct deadline
