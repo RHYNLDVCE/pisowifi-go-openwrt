@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"pisowifi/internal/config"
+	"pisowifi/internal/network"
 )
 
 // ---------------------------------------------------------------------------
@@ -24,36 +25,10 @@ type Device struct {
 	InARP    bool   `json:"in_arp"`
 }
 
-var leaseFiles = []string{
-	"/var/lib/misc/dnsmasq.leases",
-	"/var/lib/dnsmasq/dnsmasq.leases",
-	"/var/lib/dhcp/dhcpd.leases",
-}
 
-// GetDhcpLeases reads DHCP lease files and returns mac→hostname map.
-func GetDhcpLeases() map[string]string {
-	leases := map[string]string{}
-	for _, lf := range leaseFiles {
-		data, err := os.ReadFile(lf)
-		if err != nil {
-			continue
-		}
-		for _, line := range strings.Split(string(data), "\n") {
-			parts := strings.Fields(line)
-			if len(parts) >= 4 {
-				mac := strings.ToLower(parts[1])
-				hostname := parts[3]
-				if hostname != "*" {
-					leases[mac] = hostname
-				}
-			}
-		}
-	}
-	return leases
-}
 
 // GetVendorInfo returns a display name and whether the MAC vendor is known.
-func GetVendorInfo(mac, ip string, leases map[string]string) (string, bool) {
+func GetVendorInfo(mac, ip string) (string, bool) {
 	macClean := strings.ToUpper(strings.ReplaceAll(strings.ReplaceAll(mac, ":", ""), "-", ""))
 	if len(macClean) < 6 {
 		return "Unknown Device", false
@@ -61,7 +36,7 @@ func GetVendorInfo(mac, ip string, leases map[string]string) (string, bool) {
 	oui := macClean[:6]
 
 	brand := ouiLookup(oui)
-	hostname := leases[strings.ToLower(mac)]
+	hostname := network.GetHostnameByMAC(mac)
 
 	isKnown := brand != "Unknown"
 	var display string
@@ -97,7 +72,6 @@ func IsReachable(ip string) bool {
 
 // ScanInfrastructure reads /proc/net/arp and pings all non-user devices in parallel.
 func ScanInfrastructure(activeMacs map[string]bool, customNames map[string]string, customIPs map[string]string) []Device {
-	leases := GetDhcpLeases()
 	lan := config.LANInterface
 
 	data, err := os.ReadFile("/proc/net/arp")
@@ -123,7 +97,7 @@ func ScanInfrastructure(activeMacs map[string]bool, customNames map[string]strin
 			continue
 		}
 
-		displayName, _ := GetVendorInfo(mac, ip, leases)
+		displayName, _ := GetVendorInfo(mac, ip)
 		upper := strings.ToUpper(displayName)
 		phoneKeywords := []string{"NAM", "OPPO", "VIVO", "REALME", "IPHONE", "GALAXY", "XIAOMI", "POCO", "REDMI", "ANDROID"}
 		isPhone := false

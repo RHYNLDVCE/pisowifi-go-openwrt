@@ -36,9 +36,10 @@ type arpEntry struct {
 }
 
 var (
-	arpMu      sync.RWMutex
-	macToIP    = make(map[string]string) // lowercase MAC → IP
-	ipToMAC    = make(map[string]string) // IP → lowercase MAC
+	arpMu        sync.RWMutex
+	macToIP      = make(map[string]string) // lowercase MAC → IP
+	ipToMAC      = make(map[string]string) // IP → lowercase MAC
+	macToHost    = make(map[string]string) // lowercase MAC → Hostname
 )
 
 // ---------------------------------------------------------------------------
@@ -67,9 +68,10 @@ func RequestARPSync() {
 
 // arpPayload mirrors what dhcp_hook.sh and dump_arp_table() publish.
 type arpPayload struct {
-	MAC    string `json:"mac"`
-	IP     string `json:"ip"`
-	Action string `json:"action"` // "add" | "del"
+	MAC      string `json:"mac"`
+	IP       string `json:"ip"`
+	Action   string `json:"action"` // "add" | "del"
+	Hostname string `json:"hostname,omitempty"`
 }
 
 func handleARPMessage(_ paho.Client, msg paho.Message) {
@@ -94,13 +96,17 @@ func handleARPMessage(_ paho.Client, msg paho.Message) {
 		}
 		macToIP[mac] = ip
 		ipToMAC[ip] = mac
-		logger.SystemLog("[ARP] Learned: " + mac + " → " + ip)
+		if p.Hostname != "" {
+			macToHost[mac] = p.Hostname
+		}
+		logger.SystemLog("[ARP] Learned: " + mac + " → " + ip + " (" + p.Hostname + ")")
 
 	case "del":
 		if oldIP, ok := macToIP[mac]; ok {
 			delete(ipToMAC, oldIP)
 		}
 		delete(macToIP, mac)
+		delete(macToHost, mac)
 		logger.SystemLog("[ARP] Removed: " + mac + " (was " + ip + ")")
 	}
 }
@@ -116,11 +122,19 @@ func GetIPByMAC(mac string) string {
 	return macToIP[strings.ToLower(mac)]
 }
 
-// GetMACByIP returns the MAC for a given IP, or "" if unknown.
+// GetMACByIP looks up the MAC for an IP. Returns empty string if unknown.
 func GetMACByIP(ip string) string {
 	arpMu.RLock()
 	defer arpMu.RUnlock()
 	return ipToMAC[ip]
+}
+
+// GetHostnameByMAC looks up the DHCP hostname for a MAC. Returns empty string if unknown.
+func GetHostnameByMAC(mac string) string {
+	mac = strings.ToLower(mac)
+	arpMu.RLock()
+	defer arpMu.RUnlock()
+	return macToHost[mac]
 }
 
 // Snapshot returns a copy of the full MAC→IP table (for diagnostics/admin API).

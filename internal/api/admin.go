@@ -268,9 +268,9 @@ func wsLogs(c *websocket.Conn) {
 func getInfrastructureDevices(c *fiber.Ctx) error {
 	cfg := config.Get()
 	activeMacs := map[string]bool{}
-	state.Users.Range(func(mac string, u *state.UserRecord) { 
+	state.Users.Range(func(mac string, u *state.UserRecord) {
 		if u.Status != "new" {
-			activeMacs[mac] = true 
+			activeMacs[mac] = true
 		}
 	})
 	devices := infrastructure.ScanInfrastructure(activeMacs, cfg.CustomDeviceNames, cfg.CustomDeviceIPs)

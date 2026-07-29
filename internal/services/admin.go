@@ -137,7 +137,15 @@ func DeleteUser(mac string) {
 func GetPaginatedUsers(search string, page int, sortBy string, itemsPerPage int) map[string]interface{} {
 	cfg := config.Get()
 	stats := GetDashboardStats()
-	leases := infrastructure.GetDhcpLeases()
+	
+	// Create a dummy leases map using the MQTT ARP cache which contains hostnames
+	leases := make(map[string]string)
+	state.Users.Range(func(mac string, _ *state.UserRecord) {
+		if host := network.GetHostnameByMAC(mac); host != "" {
+			leases[mac] = host
+		}
+	})
+
 	customNames := cfg.CustomDeviceNames
 
 	type enriched struct {
@@ -236,7 +244,7 @@ func GetPaginatedUsers(search string, page int, sortBy string, itemsPerPage int)
 			activeMacs[mac] = true
 		}
 	})
-	devices := infrastructure.ScanInfrastructure(activeMacs, customNames, cfg.CustomDeviceIPs)
+	devices := infrastructure.ScanInfrastructure(activeMacs, customNames, cfg.CustomDeviceIPs, leases)
 
 	activeCount := 0
 	state.Users.Range(func(_ string, u *state.UserRecord) {

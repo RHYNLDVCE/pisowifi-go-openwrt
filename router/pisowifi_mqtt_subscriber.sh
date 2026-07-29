@@ -58,7 +58,12 @@ dump_arp_table() {
         [ "$ip" = "10.0.0.2" ] && continue
         # Normalise MAC to lowercase
         mac=$(echo "$mac" | tr '[:upper:]' '[:lower:]')
-        PAYLOAD="{\"mac\":\"${mac}\",\"ip\":\"${ip}\",\"action\":\"add\"}"
+        
+        # Look up hostname from dnsmasq leases
+        hostname=$(awk -v m="$mac" 'tolower($2) == m {print $4}' /tmp/dhcp.leases 2>/dev/null)
+        [ "$hostname" = "*" ] && hostname=""
+        
+        PAYLOAD="{\"mac\":\"${mac}\",\"ip\":\"${ip}\",\"action\":\"add\",\"hostname\":\"${hostname}\"}"
         mosquitto_pub \
             -h "$MQTT_HOST" \
             -p "$MQTT_PORT" \

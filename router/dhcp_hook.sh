@@ -21,6 +21,7 @@
 ACTION="$1"
 MAC="$2"
 IP="$3"
+HOSTNAME="$4"
 
 MQTT_HOST="127.0.0.1"
 MQTT_PORT="1883"
@@ -51,7 +52,7 @@ case "$ACTION" in
         ;;
 esac
 
-PAYLOAD="{\"mac\":\"${MAC}\",\"ip\":\"${IP}\",\"action\":\"${EVENT}\"}"
+PAYLOAD="{\"mac\":\"${MAC}\",\"ip\":\"${IP}\",\"action\":\"${EVENT}\",\"hostname\":\"${HOSTNAME}\"}"
 
 # Publish to MQTT broker (non-blocking, QoS 1, retained so late subscribers get it)
 mosquitto_pub \
