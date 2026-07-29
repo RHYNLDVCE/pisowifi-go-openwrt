@@ -24,10 +24,10 @@ SSH into your router and run:
 
 ```sh
 apk update
-apk add mosquitto mosquitto-client-ssl kmod-nft-core nftables tc-full kmod-sched-cake kmod-sched-core kmod-ifb
+apk add mosquitto mosquitto-client-ssl kmod-nft-core nftables tc-full kmod-sched-cake kmod-sched-core kmod-ifb conntrack
 ```
 
-> **Note:** `jsonfilter` is already built into OpenWrt. `conntrack` needs a kernel module.
+> **Note:** `jsonfilter` is already built into OpenWrt.
 > Run:
 > ```sh
 > apk add kmod-nf-conntrack

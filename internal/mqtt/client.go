@@ -45,8 +45,17 @@ func Init(brokerURL, clientID, username, password string) {
 	opts.SetMaxReconnectInterval(reconnectWait)
 	opts.SetCleanSession(false) // persist QoS 1 subscriptions across reconnects
 
-	opts.SetOnConnectHandler(func(_ paho.Client) {
+	// Last Will and Testament (LWT)
+	// If this client disconnects ungracefully, the broker will automatically publish this message
+	opts.SetWill("pisowifi/lwt", `{"status":"offline"}`, qos, true)
+
+	opts.SetOnConnectHandler(func(c paho.Client) {
 		logger.SystemLog("[MQTT] Connected to broker: " + brokerURL)
+		
+		// Clear the LWT by publishing online status
+		if token := c.Publish("pisowifi/lwt", qos, true, []byte(`{"status":"online"}`)); token.Wait() && token.Error() != nil {
+			logger.SystemLog(fmt.Sprintf("[MQTT] Failed to publish online status: %v", token.Error()))
+		}
 	})
 	opts.SetConnectionLostHandler(func(_ paho.Client, err error) {
 		logger.SystemLog(fmt.Sprintf("[MQTT] Connection lost: %v — reconnecting...", err))

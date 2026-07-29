@@ -17,8 +17,8 @@
 #
 # Dependencies (install on router):
 #   apk update
-#   apk add mosquitto mosquitto-client-ssl kmod-nft-core nftables tc-full kmod-sched-cake kmod-sched-core kmod-ifb
-#   (conntrack and jsonfilter are already built into OpenWrt)
+#   apk add mosquitto mosquitto-client-ssl kmod-nft-core nftables tc-full kmod-sched-cake kmod-sched-core kmod-ifb conntrack
+#   (jsonfilter is already built into OpenWrt)
 
 MQTT_HOST="10.0.0.1"
 MQTT_PORT="1883"
@@ -174,6 +174,9 @@ table ip pisowifi {
 
     chain nat_postrouting {
         type nat hook postrouting priority srcnat; policy accept;
+        
+        # (Hairpin NAT SNAT removed so Orange Pi gets real client IPs)
+        
         oifname "${WAN}" masquerade
     }
 }
@@ -289,6 +292,20 @@ mosquitto_sub \
                 tc qdisc del dev "$LAN" parent "1:${UID_HEX}" 2>/dev/null || true
                 tc class del dev "$LAN" parent 1:ffff classid "1:${UID_HEX}" 2>/dev/null || true
                 logger -t pisowifi "[SPEED] Removed limit for $IP"
+            fi
+            ;;
+
+        # ----------------------------------------------------------------
+        # pisowifi/lwt
+        # ----------------------------------------------------------------
+        "pisowifi/lwt")
+            status=$(echo "$payload" | jsonfilter -e '@.status' 2>/dev/null)
+            if [ "$status" = "offline" ]; then
+                logger -t pisowifi "[FAILSAFE] Orange Pi offline! Flushing all connections and blocking users."
+                nft flush set ip pisowifi authorized_users 2>/dev/null || true
+                conntrack -F 2>/dev/null || true
+            elif [ "$status" = "online" ]; then
+                logger -t pisowifi "[FAILSAFE] Orange Pi is back online."
             fi
             ;;
 

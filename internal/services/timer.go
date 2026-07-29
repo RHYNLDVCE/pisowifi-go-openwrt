@@ -9,6 +9,7 @@ import (
 	"pisowifi/internal/db"
 	"pisowifi/internal/hardware"
 	"pisowifi/internal/logger"
+	"pisowifi/internal/mqtt"
 	"pisowifi/internal/network"
 	"pisowifi/internal/state"
 )
@@ -67,38 +68,50 @@ func TickUsers(ticks int) {
 	now := float64(time.Now().UnixNano()) / 1e9
 	var toSync []db.UserRecord
 
+	routerConnected := mqtt.IsConnected()
+
 	state.Users.Range(func(mac string, u *state.UserRecord) {
 		if u.Status == "connected" {
-			if u.ExpiresAt == 0 {
-				// Safety: reconstruct deadline
-				state.Users.UpdateField(mac, func(u *state.UserRecord) {
-					u.ExpiresAt = now + float64(u.Time)
-				})
-				u, _ = state.Users.Get(mac)
-			}
-
-			timeLeft := u.ExpiresAt - now
-			newTime := int(timeLeft)
-			if newTime < 0 {
-				newTime = 0
-			}
-
-			state.Users.UpdateField(mac, func(u *state.UserRecord) {
-				u.Time = newTime
-			})
-
-			if timeLeft <= 0 {
-				state.Users.UpdateField(mac, func(u *state.UserRecord) {
-					u.Time = 0
-					u.Status = "expired"
-					u.ExpiresAt = 0
-				})
-				logger.SystemLog(fmt.Sprintf("[TIMER] User %s (IP: %s) out of time. Disconnecting...", mac, u.IP))
-				network.BlockUser(mac, u.IP)
-				if updated, ok := state.Users.Get(mac); ok {
-					toSync = append(toSync, toDBRecord(mac, updated))
+			if !routerConnected {
+				// FAILSAFE: Freeze the timer while disconnected from router
+				if u.ExpiresAt != 0 {
+					state.Users.UpdateField(mac, func(u *state.UserRecord) {
+						u.ExpiresAt = 0
+					})
 				}
-				return
+				// Skip time decrement
+			} else {
+				if u.ExpiresAt == 0 {
+					// Safety: reconstruct deadline
+					state.Users.UpdateField(mac, func(u *state.UserRecord) {
+						u.ExpiresAt = now + float64(u.Time)
+					})
+					u, _ = state.Users.Get(mac)
+				}
+	
+				timeLeft := u.ExpiresAt - now
+				newTime := int(timeLeft)
+				if newTime < 0 {
+					newTime = 0
+				}
+	
+				state.Users.UpdateField(mac, func(u *state.UserRecord) {
+					u.Time = newTime
+				})
+	
+				if timeLeft <= 0 {
+					state.Users.UpdateField(mac, func(u *state.UserRecord) {
+						u.Time = 0
+						u.Status = "expired"
+						u.ExpiresAt = 0
+					})
+					logger.SystemLog(fmt.Sprintf("[TIMER] User %s (IP: %s) out of time. Disconnecting...", mac, u.IP))
+					network.BlockUser(mac, u.IP)
+					if updated, ok := state.Users.Get(mac); ok {
+						toSync = append(toSync, toDBRecord(mac, updated))
+					}
+					return
+				}
 			}
 		}
 
