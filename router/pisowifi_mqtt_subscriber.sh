@@ -17,12 +17,11 @@
 #
 # Dependencies (install on router):
 #   apk update
-#   apk add mosquitto mosquitto-client-ssl kmod-nft-core nftables conntrack-tools jsonfilter
+#   apk add mosquitto mosquitto-client-ssl kmod-nft-core nftables
+#   (conntrack and jsonfilter are already built into OpenWrt)
 
-MQTT_HOST="localhost"
+MQTT_HOST="10.0.0.1"
 MQTT_PORT="1883"
-MQTT_USER="pisowifi"
-MQTT_PASS="change_this_mqtt_password"
 MQTT_TOPICS="pisowifi/#"
 
 # UID helper: derives a unique integer from an IP address for tc class IDs.
@@ -198,8 +197,6 @@ logger -t pisowifi "[MQTT] Subscriber starting on topics: $MQTT_TOPICS"
 mosquitto_sub \
     -h "$MQTT_HOST" \
     -p "$MQTT_PORT" \
-    -u "$MQTT_USER" \
-    -P "$MQTT_PASS" \
     -t "$MQTT_TOPICS" \
     --nodelay \
     -v \

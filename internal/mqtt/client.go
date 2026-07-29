@@ -37,10 +37,8 @@ func Init(brokerURL, clientID, username, password string) {
 	opts := paho.NewClientOptions()
 	opts.AddBroker(brokerURL)
 	opts.SetClientID(clientID)
-	if username != "" {
-		opts.SetUsername(username)
-		opts.SetPassword(password)
-	}
+	// Username/password auth is not used — access is secured by a firewall rule
+	// on the router that only allows the Orange Pi (10.0.0.2) to reach port 1883.
 
 	// Auto-reconnect is handled by paho natively
 	opts.SetAutoReconnect(true)

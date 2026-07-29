@@ -24,8 +24,20 @@ SSH into your router and run:
 
 ```sh
 apk update
-apk add mosquitto mosquitto-client-ssl kmod-nft-core nftables conntrack-tools jsonfilter
+apk add mosquitto mosquitto-client-ssl kmod-nft-core nftables
 ```
+
+> **Note:** `jsonfilter` is already built into OpenWrt. `conntrack` needs a kernel module.
+> Run:
+> ```sh
+> apk add kmod-nf-conntrack
+> ```
+> Then verify the userspace command is available:
+> ```sh
+> which conntrack   # → /usr/sbin/conntrack  (if available)
+> ```
+> If `conntrack` command is still missing after installing the module, the subscriber script
+> handles this gracefully — block rules still apply via nftables; conntrack flush just won't run.
 
 ---
 
