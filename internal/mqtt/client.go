@@ -14,6 +14,7 @@ import (
 	paho "github.com/eclipse/paho.mqtt.golang"
 
 	"pisowifi/internal/logger"
+	"pisowifi/internal/state"
 )
 
 const (
