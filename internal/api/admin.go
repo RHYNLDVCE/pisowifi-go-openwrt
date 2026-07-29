@@ -740,8 +740,7 @@ func getSingleUser(c *fiber.Ctx) error {
 	if !ok {
 		return c.Status(404).JSON(fiber.Map{"error": "User not found"})
 	}
-	leases := infrastructure.GetDhcpLeases()
-	displayName, _ := infrastructure.GetVendorInfo(mac, user.IP, leases)
+	displayName, _ := infrastructure.GetVendorInfo(mac, user.IP)
 	salesHistory := db.GetUserSales(mac)
 	for i, s := range salesHistory {
 		salesHistory[i].DateStr = time.Unix(s.Timestamp, 0).Format("Jan 02, 2006 03:04 PM")
