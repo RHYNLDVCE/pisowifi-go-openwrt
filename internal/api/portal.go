@@ -212,9 +212,12 @@ func portalWS(c *websocket.Conn) {
 	defer state.Manager.Disconnect(mac)
 
 	// Update stored IP from the WS connection's real source IP.
-	clientIP := c.IP() // c.IP() in the WS upgrader is the raw TCP source IP
+	var clientIP string
+	if c.RemoteAddr() != nil {
+		clientIP = strings.Split(c.RemoteAddr().String(), ":")[0]
+	}
 	if clientIP == "" || clientIP == "10.0.0.1" {
-		// Fallback: derive from ARP cache if IP is somehow the router's
+		// Fallback: derive from ARP cache if IP is empty or router's IP
 		clientIP = network.GetIPByMAC(mac)
 	}
 	if clientIP != "" {
