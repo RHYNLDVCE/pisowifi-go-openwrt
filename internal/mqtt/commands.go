@@ -35,9 +35,13 @@ type firewallInitPayload struct {
 	CustomTTL          int    `json:"custom_ttl"`
 	UDPPriority        bool   `json:"udp_priority"`
 	OpenNAT            bool   `json:"open_nat"`
-	SQMEnabled         bool   `json:"sqm_enabled"`
-	SQMUploadMbps      int    `json:"sqm_upload_mbps"`
-	SQMDownloadMbps    int    `json:"sqm_download_mbps"`
+	SQMEnabled               bool   `json:"sqm_enabled"`
+	SQMUploadMbps            int    `json:"sqm_upload_mbps"`
+	SQMDownloadMbps          int    `json:"sqm_download_mbps"`
+	AutoPauseEnabled         bool   `json:"auto_pause_enabled"`
+	InactiveTimeout          int    `json:"inactive_timeout"`
+	InactiveBytesThreshold   int    `json:"inactive_bytes_threshold"`
+	InactivePacketsThreshold int    `json:"inactive_packets_threshold"`
 }
 
 // ---------------------------------------------------------------------------
@@ -92,15 +96,19 @@ func ReloadFirewall(p firewallInitPayload) error {
 
 // NewFirewallPayload is a convenience constructor for building the payload
 // from config values.
-func NewFirewallPayload(lan, wan string, customTTL int, udpPriority, openNAT, sqmEnabled bool, sqmUp, sqmDown int) firewallInitPayload {
+func NewFirewallPayload(lan, wan string, customTTL int, udpPriority, openNAT, sqmEnabled bool, sqmUp, sqmDown int, autoPause bool, inactiveTimeout, inactiveBytes, inactivePkts int) firewallInitPayload {
 	return firewallInitPayload{
-		LAN:             lan,
-		WAN:             wan,
-		CustomTTL:       customTTL,
-		UDPPriority:     udpPriority,
-		OpenNAT:         openNAT,
-		SQMEnabled:      sqmEnabled,
-		SQMUploadMbps:   sqmUp,
-		SQMDownloadMbps: sqmDown,
+		LAN:                      lan,
+		WAN:                      wan,
+		CustomTTL:                customTTL,
+		UDPPriority:              udpPriority,
+		OpenNAT:                  openNAT,
+		SQMEnabled:               sqmEnabled,
+		SQMUploadMbps:            sqmUp,
+		SQMDownloadMbps:          sqmDown,
+		AutoPauseEnabled:         autoPause,
+		InactiveTimeout:          inactiveTimeout,
+		InactiveBytesThreshold:   inactiveBytes,
+		InactivePacketsThreshold: inactivePkts,
 	}
 }

@@ -30,14 +30,7 @@ import (
 // Traffic counter cache (populated by the router via MQTT)
 // ---------------------------------------------------------------------------
 
-var (
-	trafficMu    sync.RWMutex
-	trafficCache map[string][2]int64 // mac → [bytes, packets]
-)
 
-func init() {
-	trafficCache = make(map[string][2]int64)
-}
 
 // ---------------------------------------------------------------------------
 // Init
@@ -57,6 +50,10 @@ func InitFirewall() {
 		cfg.SQMEnabled,
 		cfg.SQMUploadMbps,
 		cfg.SQMDownloadMbps,
+		cfg.AutoPauseEnabled,
+		cfg.InactiveTimeout,
+		cfg.InactiveBytesThreshold,
+		cfg.InactivePacketThreshold,
 	)
 	if err := mqttcmd.InitFirewall(payload); err != nil {
 		logger.SystemLog("[FIREWALL] Failed to send init command: " + err.Error())
@@ -64,8 +61,7 @@ func InitFirewall() {
 		logger.SystemLog("[FIREWALL] Init command sent to router.")
 	}
 
-	// Subscribe to traffic stats published by the router
-	subscribeTraffic()
+
 
 	// Subscribe to pisowifi/arp and request a full MAC→IP dump from the router.
 	// This must run AFTER mqtt.Init() so the subscription takes effect immediately.
@@ -86,6 +82,10 @@ func ReloadFirewall() {
 		cfg.SQMEnabled,
 		cfg.SQMUploadMbps,
 		cfg.SQMDownloadMbps,
+		cfg.AutoPauseEnabled,
+		cfg.InactiveTimeout,
+		cfg.InactiveBytesThreshold,
+		cfg.InactivePacketThreshold,
 	)
 	if err := mqttcmd.ReloadFirewall(payload); err != nil {
 		logger.SystemLog("[FIREWALL] Failed to send reload command: " + err.Error())
@@ -171,43 +171,4 @@ func RefreshAllLimits() {
 	})
 }
 
-// ---------------------------------------------------------------------------
-// Traffic accounting — data pushed from router via MQTT
-// ---------------------------------------------------------------------------
-
-// trafficPayload matches what the router publishes on pisowifi/traffic.
-type trafficPayload struct {
-	MAC     string `json:"mac"`
-	BytesRX int64  `json:"bytes_rx"`
-	BytesTX int64  `json:"bytes_tx"`
-	Packets int64  `json:"packets"`
-}
-
-func subscribeTraffic() {
-	mqttcmd.Subscribe("pisowifi/traffic", func(_ paho.Client, msg paho.Message) {
-		var p trafficPayload
-		if err := json.Unmarshal(msg.Payload(), &p); err != nil {
-			return
-		}
-		trafficMu.Lock()
-		trafficCache[p.MAC] = [2]int64{p.BytesRX + p.BytesTX, p.Packets}
-		trafficMu.Unlock()
-	})
-}
-
-// GetAllTraffic returns the latest traffic counters pushed by the router.
-// Returns nil if no data has been received yet.
-func GetAllTraffic() map[string][2]int64 {
-	trafficMu.RLock()
-	defer trafficMu.RUnlock()
-	if len(trafficCache) == 0 {
-		return nil
-	}
-	// Return a snapshot copy
-	out := make(map[string][2]int64, len(trafficCache))
-	for k, v := range trafficCache {
-		out[k] = v
-	}
-	return out
-}
 

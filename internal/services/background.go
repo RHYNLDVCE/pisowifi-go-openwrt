@@ -1,12 +1,16 @@
 package services
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
 
+	paho "github.com/eclipse/paho.mqtt.golang"
+
 	"pisowifi/internal/hardware"
 	"pisowifi/internal/logger"
+	"pisowifi/internal/mqtt"
 	"pisowifi/internal/state"
 )
 
@@ -20,10 +24,20 @@ var Wg sync.WaitGroup
 
 // StartBackgroundTasks launches all three daemon goroutines.
 func StartBackgroundTasks() {
-	Wg.Add(3)
+	Wg.Add(2)
 	go coinListener()
 	go timeManager()
-	go connectivityMonitor()
+
+	// Subscribe to auto-pause events from the router
+	mqtt.Subscribe("pisowifi/pause_user", func(_ paho.Client, msg paho.Message) {
+		var p struct {
+			MAC string `json:"mac"`
+		}
+		if err := json.Unmarshal(msg.Payload(), &p); err == nil && p.MAC != "" {
+			logger.SystemLog(fmt.Sprintf("[AUTO-PAUSE] Router reported user %s is inactive.", p.MAC))
+			PauseUser(p.MAC)
+		}
+	})
 }
 
 // coinListener polls the coin GPIO and credits users on pulse detection.
@@ -105,24 +119,3 @@ func timeManager() {
 	}
 }
 
-// connectivityMonitor checks idle users every 15 seconds.
-// Mirrors _connectivity_monitor() from background.py.
-func connectivityMonitor() {
-	defer Wg.Done()
-	logger.SystemLog("Connectivity Monitor STARTED.")
-	for {
-		if state.IsShuttingDown.Load() {
-			return
-		}
-		time.Sleep(15 * time.Second)
-
-		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					logger.SystemLog(fmt.Sprintf("CRITICAL ERROR in Monitor loop: %v", r))
-				}
-			}()
-			EvaluateAllConnections()
-		}()
-	}
-}

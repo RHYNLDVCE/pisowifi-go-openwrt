@@ -85,6 +85,16 @@ apply_firewall_init() {
     SQM=$(echo "$payload"       | jsonfilter -e '@.sqm_enabled')
     SQM_UP=$(echo "$payload"    | jsonfilter -e '@.sqm_upload_mbps')
     SQM_DOWN=$(echo "$payload"  | jsonfilter -e '@.sqm_download_mbps')
+    AUTO_PAUSE=$(echo "$payload" | jsonfilter -e '@.auto_pause_enabled')
+    TIMEOUT=$(echo "$payload" | jsonfilter -e '@.inactive_timeout')
+    BYTES_LIMIT=$(echo "$payload" | jsonfilter -e '@.inactive_bytes_threshold')
+    PKTS_LIMIT=$(echo "$payload" | jsonfilter -e '@.inactive_packets_threshold')
+
+    # Save auto-pause config to tmp for the awk monitor
+    echo "enabled $AUTO_PAUSE" > /tmp/pisowifi_auto_pause.conf
+    echo "timeout $TIMEOUT" >> /tmp/pisowifi_auto_pause.conf
+    echo "bytes $BYTES_LIMIT" >> /tmp/pisowifi_auto_pause.conf
+    echo "pkts $PKTS_LIMIT" >> /tmp/pisowifi_auto_pause.conf
 
     logger -t pisowifi "[FIREWALL] Applying nftables init: LAN=$LAN WAN=$WAN"
 
@@ -289,6 +299,77 @@ EOF
 }
 
 # ---------------------------------------------------------------------------
+# Auto-Pause Monitor Loop
+# ---------------------------------------------------------------------------
+# Periodically reads nftables counters and uses an awk state machine to
+# track idle users. If a user is inactive for the timeout, it sends a pause command.
+auto_pause_monitor() {
+    logger -t pisowifi "[MQTT] Auto-pause monitor started."
+    while true; do
+        sleep 15
+        echo "MARKER_START $(date +%s)"
+        nft list set ip pisowifi authorized_users 2>/dev/null | grep -oE '([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2} counter packets [0-9]+ bytes [0-9]+'
+    done | awk -v host="$MQTT_HOST" -v port="$MQTT_PORT" '
+    /^MARKER_START/ {
+        now = $2
+        
+        # Read config dynamically
+        enabled = "false"
+        timeout = 0
+        bytes_limit = 0
+        pkts_limit = 0
+        while ((getline < "/tmp/pisowifi_auto_pause.conf") > 0) {
+            if ($1 == "enabled") enabled = $2
+            if ($1 == "timeout") timeout = $2
+            if ($1 == "bytes") bytes_limit = $2
+            if ($1 == "pkts") pkts_limit = $2
+        }
+        close("/tmp/pisowifi_auto_pause.conf")
+
+        if (enabled == "true" && timeout > 0) {
+            for (mac in last_active) {
+                # Ensure the user is still authorized in this cycle (not manually paused/removed)
+                if (!(mac in seen)) {
+                    delete last_active[mac]
+                    delete last_bytes[mac]
+                    delete last_pkts[mac]
+                    continue
+                }
+
+                if ((now - last_active[mac]) > timeout) {
+                    printf "mosquitto_pub -h %s -p %s -t pisowifi/pause_user -m '\''{\"mac\":\"%s\"}'\''\n", host, port, mac
+                    delete last_active[mac]
+                    delete last_bytes[mac]
+                    delete last_pkts[mac]
+                }
+            }
+        }
+        delete seen
+        next
+    }
+    /counter packets/ {
+        mac = $1; pkts = $4; bytes = $6
+        seen[mac] = 1
+        if (!(mac in last_bytes)) {
+            last_bytes[mac] = bytes
+            last_pkts[mac] = pkts
+            last_active[mac] = now
+        } else {
+            diff_b = bytes - last_bytes[mac]
+            diff_p = pkts - last_pkts[mac]
+            last_bytes[mac] = bytes
+            last_pkts[mac] = pkts
+            if (diff_b > bytes_limit || diff_p > pkts_limit) {
+                last_active[mac] = now
+            }
+        }
+    }' | sh 2>/dev/null
+}
+
+# Start monitor in the background
+auto_pause_monitor &
+
+# ---------------------------------------------------------------------------
 # Main subscriber loop
 # ---------------------------------------------------------------------------
 logger -t pisowifi "[MQTT] Subscriber starting on topics: $MQTT_TOPICS"
@@ -312,7 +393,7 @@ mosquitto_sub \
             MAC=$(echo "$payload" | jsonfilter -e '@.mac')
             IP=$(echo "$payload"  | jsonfilter -e '@.ip')
             if [ -n "$MAC" ]; then
-                nft add element ip pisowifi authorized_users "{ $MAC }" 2>/dev/null || true
+                nft add element ip pisowifi authorized_users "{ $MAC counter }" 2>/dev/null || true
                 logger -t pisowifi "[ALLOW] $MAC ($IP)"
             fi
             ;;
