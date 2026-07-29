@@ -15,6 +15,7 @@ import (
 	"pisowifi/internal/db"
 	"pisowifi/internal/infrastructure"
 	"pisowifi/internal/logger"
+	"pisowifi/internal/mqtt"
 	"pisowifi/internal/network"
 	"pisowifi/internal/security"
 	"pisowifi/internal/services"

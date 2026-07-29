@@ -161,7 +161,7 @@ export default function ManageUser() {
               const formData = new FormData(e.target);
               handleAction('/admin/manage_points', Object.fromEntries(formData), 'Points updated successfully!');
             }} className="space-y-4">
-              <div className="flex gap-3 relative">
+              <div className="flex flex-col sm:flex-row gap-3 relative">
                 <CustomSelect
                   name="action"
                   value={pointsAction}
@@ -184,8 +184,11 @@ export default function ManageUser() {
         {/* Right Column: History & Security */}
         <div className="space-y-6">
           <div className="bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-md shadow-sm overflow-hidden flex flex-col">
-            <div className="px-6 py-5 border-b border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shrink-0">
+            <div className="px-6 py-5 border-b border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shrink-0 flex justify-between items-center">
               <h3 className="text-base font-bold">Sales History</h3>
+              <span className="text-sm font-bold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-500/10 px-3 py-1 rounded-full border border-green-200 dark:border-green-900">
+                Total: ₱{(history ? history.reduce((sum, h) => sum + h.Amount, 0) : 0).toLocaleString()}
+              </span>
             </div>
             {history && history.length > 0 ? (
               <div className="overflow-x-auto max-h-[300px] overflow-y-auto custom-scrollbar">

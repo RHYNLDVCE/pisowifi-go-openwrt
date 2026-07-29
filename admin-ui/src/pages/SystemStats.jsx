@@ -19,8 +19,16 @@ export default function SystemStats() {
     ips: 'Managed by Router',
   });
 
-  const [speeds, setSpeeds] = useState({ rx: 0, tx: 0, lan_rx: 0, lan_tx: 0 });
-  const lastState = useRef({ rx: 0, tx: 0, lan_rx: 0, lan_tx: 0, time: Date.now() });
+  const [speeds, setSpeeds] = useState({ 
+    pi_rx: 0, pi_tx: 0, 
+    router_rx: 0, router_tx: 0, router_lan_rx: 0, router_lan_tx: 0 
+  });
+  
+  const lastState = useRef({ 
+    pi_rx: 0, pi_tx: 0, 
+    router_rx: 0, router_tx: 0, router_lan_rx: 0, router_lan_tx: 0, 
+    time: Date.now() 
+  });
 
   const formatUptime = (seconds) => {
     if (!seconds) return '--';
@@ -69,27 +77,36 @@ export default function SystemStats() {
         const now = Date.now();
         const timeDiff = (now - lastState.current.time) / 1000;
         
-        // Use router data for flow if available, else fallback to pi data (old architecture)
-        const wanRx = rData.wan_rx !== undefined ? rData.wan_rx : data.wan_rx_total;
-        const wanTx = rData.wan_tx !== undefined ? rData.wan_tx : data.wan_tx_total;
-        const lanRx = rData.lan_rx !== undefined ? rData.lan_rx : data.lan_rx_total;
-        const lanTx = rData.lan_tx !== undefined ? rData.lan_tx : data.lan_tx_total;
+        const piRx = data.wan_rx_total || 0;
+        const piTx = data.wan_tx_total || 0;
+        
+        const rWanRx = rData.wan_rx !== undefined ? rData.wan_rx : 0;
+        const rWanTx = rData.wan_tx !== undefined ? rData.wan_tx : 0;
+        const rLanRx = rData.lan_rx !== undefined ? rData.lan_rx : 0;
+        const rLanTx = rData.lan_tx !== undefined ? rData.lan_tx : 0;
         
         if (timeDiff > 0) {
-          if (lastState.current.rx > 0 && wanRx !== undefined) {
-             const rxSpeed = Math.max(0, (wanRx - lastState.current.rx) / timeDiff);
-             const txSpeed = Math.max(0, (wanTx - lastState.current.tx) / timeDiff);
-             const lanRxSpeed = Math.max(0, ((lanRx || 0) - lastState.current.lan_rx) / timeDiff);
-             const lanTxSpeed = Math.max(0, ((lanTx || 0) - lastState.current.lan_tx) / timeDiff);
-             setSpeeds({ rx: rxSpeed, tx: txSpeed, lan_rx: lanRxSpeed, lan_tx: lanTxSpeed });
+          let updates = {};
+          if (lastState.current.pi_rx > 0) {
+             updates.pi_rx = Math.max(0, (piRx - lastState.current.pi_rx) / timeDiff);
+             updates.pi_tx = Math.max(0, (piTx - lastState.current.pi_tx) / timeDiff);
           }
+          if (lastState.current.router_rx > 0 && rWanRx !== undefined) {
+             updates.router_rx = Math.max(0, (rWanRx - lastState.current.router_rx) / timeDiff);
+             updates.router_tx = Math.max(0, (rWanTx - lastState.current.router_tx) / timeDiff);
+             updates.router_lan_rx = Math.max(0, (rLanRx - lastState.current.router_lan_rx) / timeDiff);
+             updates.router_lan_tx = Math.max(0, (rLanTx - lastState.current.router_lan_tx) / timeDiff);
+          }
+          setSpeeds(prev => ({ ...prev, ...updates }));
         }
         
         lastState.current = {
-           rx: wanRx || lastState.current.rx,
-           tx: wanTx || lastState.current.tx,
-           lan_rx: lanRx || lastState.current.lan_rx,
-           lan_tx: lanTx || lastState.current.lan_tx,
+           pi_rx: piRx || lastState.current.pi_rx,
+           pi_tx: piTx || lastState.current.pi_tx,
+           router_rx: rWanRx || lastState.current.router_rx,
+           router_tx: rWanTx || lastState.current.router_tx,
+           router_lan_rx: rLanRx || lastState.current.router_lan_rx,
+           router_lan_tx: rLanTx || lastState.current.router_lan_tx,
            time: now
         };
       } catch (err) {
@@ -113,8 +130,24 @@ export default function SystemStats() {
   return (
     <div className="space-y-4 sm:space-y-6">
       
+      {/* Tabs */}
+      <div className="flex space-x-2 border-b border-gray-200 dark:border-zinc-800 pb-0">
+        <button
+          onClick={() => setActiveTab('orangepi')}
+          className={`flex items-center gap-2 px-6 py-3 text-sm font-bold rounded-t-md transition-colors ${activeTab === 'orangepi' ? 'bg-white dark:bg-zinc-950 border-t border-l border-r border-gray-200 dark:border-zinc-800 text-gray-900 dark:text-white relative top-[1px]' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+        >
+          <Server size={18} /> Orange Pi Core
+        </button>
+        <button
+          onClick={() => setActiveTab('router')}
+          className={`flex items-center gap-2 px-6 py-3 text-sm font-bold rounded-t-md transition-colors ${activeTab === 'router' ? 'bg-white dark:bg-zinc-950 border-t border-l border-r border-gray-200 dark:border-zinc-800 text-gray-900 dark:text-white relative top-[1px]' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+        >
+          <Router size={18} /> OpenWrt Router
+        </button>
+      </div>
+      
       {/* Network Flow Panel */}
-      <div className="bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-md shadow-sm p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-md shadow-sm p-4 sm:p-6 mb-4 sm:mb-6 mt-0">
         <h3 className="text-xs sm:text-sm font-bold uppercase tracking-widest text-gray-500 mb-4 sm:mb-6">Realtime Network Flow</h3>
         <div className="flex flex-col md:flex-row items-center gap-4 bg-gray-50 dark:bg-zinc-900 p-4 sm:p-6 rounded border border-gray-200 dark:border-zinc-800 relative overflow-hidden">
            
@@ -130,53 +163,41 @@ export default function SystemStats() {
                <div className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">WAN Access</div>
                <div className="flex flex-col sm:flex-row sm:gap-4 gap-1.5">
                  <div className="flex items-center gap-1.5 text-gray-900 dark:text-white font-mono text-[13px] font-bold">
-                   <ArrowDownToLine size={14} className="text-gray-500" /> {formatSpeed(speeds.rx)}
+                   <ArrowDownToLine size={14} className="text-gray-500" /> {formatSpeed(activeTab === 'orangepi' ? speeds.pi_rx : speeds.router_rx)}
                  </div>
                  <div className="flex items-center gap-1.5 text-gray-900 dark:text-white font-mono text-[13px] font-bold">
-                   <ArrowUpToLine size={14} className="text-gray-500" /> {formatSpeed(speeds.tx)}
+                   <ArrowUpToLine size={14} className="text-gray-500" /> {formatSpeed(activeTab === 'orangepi' ? speeds.pi_tx : speeds.router_tx)}
                  </div>
                </div>
              </div>
            </div>
 
-           <div className="hidden md:flex shrink-0 px-2 relative z-10 text-gray-400 dark:text-gray-600">
-              <ArrowRightLeft size={20} />
-           </div>
+           {activeTab === 'router' && (
+             <>
+               <div className="hidden md:flex shrink-0 px-2 relative z-10 text-gray-400 dark:text-gray-600">
+                  <ArrowRightLeft size={20} />
+               </div>
 
-           {/* LAN Node */}
-           <div className="flex-1 w-full flex items-center gap-4 relative z-10 bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 p-4 rounded shadow-sm">
-             <div className="w-12 h-12 text-gray-900 dark:text-white rounded flex items-center justify-center shrink-0">
-               <Usb size={24} />
-             </div>
-             <div>
-               <div className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">LAN Router</div>
-               <div className="flex flex-col sm:flex-row sm:gap-4 gap-1.5">
-                 <div className="flex items-center gap-1.5 text-gray-900 dark:text-white font-mono text-[13px] font-bold">
-                   <ArrowDownToLine size={14} className="text-gray-500" /> {formatSpeed(speeds.lan_tx)}
+               {/* LAN Node */}
+               <div className="flex-1 w-full flex items-center gap-4 relative z-10 bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 p-4 rounded shadow-sm">
+                 <div className="w-12 h-12 text-gray-900 dark:text-white rounded flex items-center justify-center shrink-0">
+                   <Network size={24} />
                  </div>
-                 <div className="flex items-center gap-1.5 text-gray-900 dark:text-white font-mono text-[13px] font-bold">
-                   <ArrowUpToLine size={14} className="text-gray-500" /> {formatSpeed(speeds.lan_rx)}
+                 <div>
+                   <div className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">LAN Network</div>
+                   <div className="flex flex-col sm:flex-row sm:gap-4 gap-1.5">
+                     <div className="flex items-center gap-1.5 text-gray-900 dark:text-white font-mono text-[13px] font-bold">
+                       <ArrowDownToLine size={14} className="text-gray-500" /> {formatSpeed(speeds.router_lan_tx)}
+                     </div>
+                     <div className="flex items-center gap-1.5 text-gray-900 dark:text-white font-mono text-[13px] font-bold">
+                       <ArrowUpToLine size={14} className="text-gray-500" /> {formatSpeed(speeds.router_lan_rx)}
+                     </div>
+                   </div>
                  </div>
                </div>
-             </div>
-           </div>
+             </>
+           )}
         </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex space-x-2 border-b border-gray-200 dark:border-zinc-800 pb-1">
-        <button
-          onClick={() => setActiveTab('orangepi')}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-t-md transition-colors ${activeTab === 'orangepi' ? 'bg-white dark:bg-zinc-950 border-t border-l border-r border-gray-200 dark:border-zinc-800 text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
-        >
-          <Server size={16} /> Orange Pi Core
-        </button>
-        <button
-          onClick={() => setActiveTab('router')}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-t-md transition-colors ${activeTab === 'router' ? 'bg-white dark:bg-zinc-950 border-t border-l border-r border-gray-200 dark:border-zinc-800 text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
-        >
-          <Router size={16} /> OpenWrt Router
-        </button>
       </div>
 
       {/* Hardware Stats Grid */}
@@ -229,7 +250,7 @@ export default function SystemStats() {
              </div>
           </div>
           <div>
-            <div className="text-sm sm:text-base font-mono font-bold text-gray-900 dark:text-white break-all leading-relaxed">{displayStats.ips}</div>
+            <div className="text-sm sm:text-base font-mono font-bold text-gray-900 dark:text-white break-all leading-relaxed whitespace-pre-wrap">{displayStats.ips}</div>
             <div className="text-[10px] sm:text-xs font-medium text-gray-500 mt-1">Local Network Interfaces</div>
           </div>
         </div>
