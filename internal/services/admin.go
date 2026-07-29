@@ -138,14 +138,6 @@ func GetPaginatedUsers(search string, page int, sortBy string, itemsPerPage int)
 	cfg := config.Get()
 	stats := GetDashboardStats()
 	
-	// Create a dummy leases map using the MQTT ARP cache which contains hostnames
-	leases := make(map[string]string)
-	state.Users.Range(func(mac string, _ *state.UserRecord) {
-		if host := network.GetHostnameByMAC(mac); host != "" {
-			leases[mac] = host
-		}
-	})
-
 	customNames := cfg.CustomDeviceNames
 
 	type enriched struct {
@@ -156,7 +148,7 @@ func GetPaginatedUsers(search string, page int, sortBy string, itemsPerPage int)
 
 	var users []enriched
 	state.Users.Range(func(mac string, u *state.UserRecord) {
-		name, _ := infrastructure.GetVendorInfo(mac, u.IP, leases)
+		name, _ := infrastructure.GetVendorInfo(mac, u.IP)
 		if customNames[mac] != "" {
 			name = customNames[mac]
 		}
@@ -244,7 +236,7 @@ func GetPaginatedUsers(search string, page int, sortBy string, itemsPerPage int)
 			activeMacs[mac] = true
 		}
 	})
-	devices := infrastructure.ScanInfrastructure(activeMacs, customNames, cfg.CustomDeviceIPs, leases)
+	devices := infrastructure.ScanInfrastructure(activeMacs, customNames, cfg.CustomDeviceIPs)
 
 	activeCount := 0
 	state.Users.Range(func(_ string, u *state.UserRecord) {
