@@ -10,7 +10,6 @@ import (
 
 	"pisowifi/internal/config"
 	"pisowifi/internal/db"
-	"pisowifi/internal/infrastructure"
 	"pisowifi/internal/services"
 	"pisowifi/internal/state"
 
@@ -285,7 +284,6 @@ func claimFreeTime(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 
 func rewardsPage(c *fiber.Ctx) error {
-	clientIP := c.Query("ip")
 	mac := c.Query("mac")
 	if mac == "" {
 		return c.Redirect("http://10.0.0.1:8080/", fiber.StatusFound)
@@ -349,7 +347,6 @@ func generateVoucher(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"status": "error", "message": "Invalid body"})
 	}
 
-	clientIP := c.Query("ip")
 	mac := c.Query("mac")
 	if mac == "" {
 		return c.JSON(fiber.Map{"status": "error", "message": "MAC address missing"})
@@ -370,7 +367,6 @@ func redeemVoucher(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"status": "error", "message": "Invalid body"})
 	}
 
-	clientIP := c.Query("ip")
 	mac := c.Query("mac")
 	if mac == "" {
 		return c.JSON(fiber.Map{"status": "error", "message": "MAC address missing"})

@@ -180,6 +180,9 @@ table ip pisowifi {
     chain nat_prerouting {
         type nat hook prerouting priority dstnat; policy accept;
         
+        # Do not intercept the Orange Pi's own internet traffic!
+        iifname "${LAN}" ip saddr 10.0.0.2 accept
+
         # Make the portal explicitly accessible at 10.0.0.1 (After MAC injection)
         iifname "${LAN}" ip daddr 10.0.0.1 tcp dport 80 dnat to 10.0.0.2:80
 
