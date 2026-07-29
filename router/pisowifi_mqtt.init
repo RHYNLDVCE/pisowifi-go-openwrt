@@ -26,5 +26,11 @@ start_service() {
 }
 
 stop_service() {
+    # Kill all mosquitto_sub processes spawned by the subscriber script
+    local pids
+    pids=$(ps | grep mosquitto_sub | grep -v grep | awk '{print $1}')
+    [ -n "$pids" ] && kill $pids 2>/dev/null
+    pids=$(ps | grep pisowifi_mqtt_subscriber | grep -v grep | awk '{print $1}')
+    [ -n "$pids" ] && kill $pids 2>/dev/null
     return 0
 }
