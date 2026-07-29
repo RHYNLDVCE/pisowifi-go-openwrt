@@ -14,11 +14,7 @@ package network
 // has arrived yet (non-blocking).
 
 import (
-	"encoding/json"
-	"sync"
 	"time"
-
-	paho "github.com/eclipse/paho.mqtt.golang"
 
 	"pisowifi/internal/config"
 	"pisowifi/internal/logger"
