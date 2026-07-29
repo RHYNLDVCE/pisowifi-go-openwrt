@@ -84,17 +84,24 @@ func portalHome(c *fiber.Ctx) error {
 		return c.Redirect("http://10.0.0.1/", fiber.StatusFound)
 	}
 
-	clientIP := c.IP()
-	clientMAC := infrastructure.GetMACFromIP(clientIP)
+	clientMAC := c.Query("mac")
+	clientIP := c.Query("ip")
 
-	if clientMAC != "" && clientMAC != "00:00:00:00:00:00" {
+	if clientMAC == "" {
+		// Auto-trigger the CGI MAC Injector on the router
+		return c.Redirect("http://10.0.0.1:8080/", fiber.StatusFound)
+	}
+
+	if clientMAC != "" && clientMAC != "00:00:00:00:00:00" && clientMAC != "unknown" {
 		if _, ok := state.Users.Get(clientMAC); !ok {
 			state.Users.Set(clientMAC, &state.UserRecord{
 				Status: "new", Time: 0, Balance: 0, FreeClaimed: 0, Points: 0,
 			})
 		}
 		state.Users.UpdateField(clientMAC, func(u *state.UserRecord) {
-			u.IP = clientIP
+			if clientIP != "" {
+				u.IP = clientIP
+			}
 			u.LastActive = float64(time.Now().UnixNano()) / 1e9
 		})
 	}
@@ -278,8 +285,11 @@ func claimFreeTime(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 
 func rewardsPage(c *fiber.Ctx) error {
-	clientIP := c.IP()
-	mac := infrastructure.GetMACFromIP(clientIP)
+	clientIP := c.Query("ip")
+	mac := c.Query("mac")
+	if mac == "" {
+		return c.Redirect("http://10.0.0.1:8080/", fiber.StatusFound)
+	}
 	cfg := config.Get()
 
 	if mac != "" {
@@ -316,8 +326,11 @@ func redeemPoints(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"status": "error", "message": "Invalid body"})
 	}
 
-	clientIP := c.IP()
-	mac := infrastructure.GetMACFromIP(clientIP)
+	clientIP := c.Query("ip")
+	mac := c.Query("mac")
+	if mac == "" {
+		return c.JSON(fiber.Map{"status": "error", "message": "MAC address missing"})
+	}
 	
 	status, msg := services.RedeemPoints(mac, clientIP, body.PromoID)
 	return c.JSON(fiber.Map{"status": status, "message": msg})
@@ -336,8 +349,11 @@ func generateVoucher(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"status": "error", "message": "Invalid body"})
 	}
 
-	clientIP := c.IP()
-	mac := infrastructure.GetMACFromIP(clientIP)
+	clientIP := c.Query("ip")
+	mac := c.Query("mac")
+	if mac == "" {
+		return c.JSON(fiber.Map{"status": "error", "message": "MAC address missing"})
+	}
 
 	code, err := services.GenerateVoucher(mac, body.Type, body.Value)
 	if err != nil {
@@ -354,8 +370,11 @@ func redeemVoucher(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"status": "error", "message": "Invalid body"})
 	}
 
-	clientIP := c.IP()
-	mac := infrastructure.GetMACFromIP(clientIP)
+	clientIP := c.Query("ip")
+	mac := c.Query("mac")
+	if mac == "" {
+		return c.JSON(fiber.Map{"status": "error", "message": "MAC address missing"})
+	}
 
 	err := services.RedeemVoucher(mac, body.Code)
 	if err != nil {

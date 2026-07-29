@@ -50,6 +50,31 @@ apply_firewall_init() {
 
     logger -t pisowifi "[FIREWALL] Applying nftables init: LAN=$LAN WAN=$WAN"
 
+    # ----------------------------------------------------------------
+    # 1. Setup a lightweight uhttpd interceptor on the router
+    # This solves the "Hairpin NAT / MAC hiding" problem perfectly.
+    # ----------------------------------------------------------------
+    mkdir -p /www_portal/cgi-bin
+    cat << 'HTM' > /www_portal/cgi-bin/redirect
+#!/bin/sh
+IP="$REMOTE_ADDR"
+MAC=$(cat /proc/net/arp | grep "^$IP " | awk '{print $4}')
+if [ -z "$MAC" ]; then
+    MAC="unknown"
+fi
+echo "Status: 302 Found"
+echo "Location: http://10.0.0.1/?mac=$MAC&ip=$IP"
+echo ""
+HTM
+    chmod +x /www_portal/cgi-bin/redirect
+
+    uci set uhttpd.portal=uhttpd 2>/dev/null || true
+    uci add_list uhttpd.portal.listen_http='0.0.0.0:8080' 2>/dev/null || true
+    uci set uhttpd.portal.home='/www_portal'
+    uci set uhttpd.portal.error_page='/cgi-bin/redirect'
+    uci commit uhttpd
+    /etc/init.d/uhttpd restart 2>/dev/null || true
+
     # Kernel tuning
     sysctl -w net.core.default_qdisc=fq
     sysctl -w net.ipv4.tcp_congestion_control=bbr
@@ -155,27 +180,27 @@ table ip pisowifi {
     chain nat_prerouting {
         type nat hook prerouting priority dstnat; policy accept;
         
-        # Do not intercept the Orange Pi's own traffic
-        iifname "${LAN}" ip saddr 10.0.0.2 accept
-        
-        # Make the portal explicitly accessible at 10.0.0.1 for everyone (auth & unauth)
+        # Make the portal explicitly accessible at 10.0.0.1 (After MAC injection)
         iifname "${LAN}" ip daddr 10.0.0.1 tcp dport 80 dnat to 10.0.0.2:80
-        
+
         # Authorized users: send DNS to Cloudflare
         iifname "${LAN}" ether saddr @authorized_users udp dport 53 dnat to 1.1.1.1:53
         iifname "${LAN}" ether saddr @authorized_users tcp dport 53 dnat to 1.1.1.1:53
         
-        # Unauthorized users: redirect DNS to router, HTTP/HTTPS to Orange Pi portal
+        # Unauthorized users: redirect DNS to router
         iifname "${LAN}" ether saddr != @authorized_users udp dport 53 dnat to 10.0.0.1:53
         iifname "${LAN}" ether saddr != @authorized_users tcp dport 53 dnat to 10.0.0.1:53
-        iifname "${LAN}" ether saddr != @authorized_users tcp dport 80 dnat to 10.0.0.2:80
-        iifname "${LAN}" ether saddr != @authorized_users tcp dport 443 dnat to 10.0.0.2:80
+        
+        # Unauthorized users: intercept HTTP/HTTPS via local router uhttpd (which 302 redirects back to 10.0.0.1 with MAC)
+        iifname "${LAN}" ether saddr != @authorized_users ip daddr != 10.0.0.1 tcp dport 80 redirect to :8080
+        iifname "${LAN}" ether saddr != @authorized_users ip daddr != 10.0.0.1 tcp dport 443 redirect to :8080
     }
 
     chain nat_postrouting {
         type nat hook postrouting priority srcnat; policy accept;
         
-        # (Hairpin NAT SNAT removed so Orange Pi gets real client IPs)
+        # Hairpin NAT (Required so 10.0.0.1 DNATs back to Orange Pi without asymmetric routing)
+        ip saddr 10.0.0.0/16 oifname "${LAN}" ip daddr 10.0.0.2 masquerade
         
         oifname "${WAN}" masquerade
     }

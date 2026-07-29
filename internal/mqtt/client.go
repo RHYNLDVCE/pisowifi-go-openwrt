@@ -33,7 +33,7 @@ var mqttClient paho.Client
 // Init creates and connects the MQTT client to the router broker.
 // brokerURL example: "tcp://10.0.0.1:1883"
 // clientID:          "pisowifi-orangepi"
-func Init(brokerURL, clientID, username, password string) {
+func Init(brokerURL, clientID, username, password string, onConnectCb func()) {
 	opts := paho.NewClientOptions()
 	opts.AddBroker(brokerURL)
 	opts.SetClientID(clientID)
@@ -56,6 +56,10 @@ func Init(brokerURL, clientID, username, password string) {
 		go func() {
 			if token := c.Publish("pisowifi/lwt", qos, true, []byte(`{"status":"online"}`)); token.Wait() && token.Error() != nil {
 				logger.SystemLog(fmt.Sprintf("[MQTT] Failed to publish online status: %v", token.Error()))
+			}
+			
+			if onConnectCb != nil {
+				onConnectCb()
 			}
 		}()
 	})

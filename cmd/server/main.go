@@ -71,16 +71,15 @@ func main() {
 	}
 
 	// 6b. Init MQTT client — connects to the OpenWrt router broker.
-	// Must happen BEFORE network.InitFirewall(), which sends the init command over MQTT.
+	// We pass network.InitFirewall so that the nftables rules are sent automatically
+	// on startup, AND whenever the router reboots/reconnects.
 	mqtt.Init(
 		config.MQTTBroker,
 		config.MQTTClientID,
 		config.MQTTUsername,
 		config.MQTTPassword,
+		network.InitFirewall,
 	)
-
-	// 7. Init firewall (now sends nftables init to router via MQTT)
-	network.InitFirewall()
 
 	// 8. (conntrack flush is now handled by the router on init via MQTT)
 
