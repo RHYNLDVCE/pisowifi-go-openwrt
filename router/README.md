@@ -23,8 +23,8 @@ via MQTT commands from the Orange Pi.
 SSH into your router and run:
 
 ```sh
-opkg update
-opkg install mosquitto mosquitto-client-ssl kmod-nft-core nftables conntrack-tools jsonfilter
+apk update
+apk add mosquitto mosquitto-client-ssl kmod-nft-core nftables conntrack-tools jsonfilter
 ```
 
 ---
@@ -35,15 +35,15 @@ opkg install mosquitto mosquitto-client-ssl kmod-nft-core nftables conntrack-too
 # Create mosquitto directories
 mkdir -p /etc/mosquitto /tmp/mosquitto
 
-# Copy config
+# Copy config (run this from your laptop)
 scp mosquitto.conf root@10.0.0.1:/etc/mosquitto/mosquitto.conf
 
-# Create the pisowifi user password (enter your password when prompted)
+# On the router — create the pisowifi MQTT user password
 mosquitto_passwd -c /etc/mosquitto/passwd pisowifi
 
 # Enable and start mosquitto
-/etc/init.d/mosquitto enable
-/etc/init.d/mosquitto start
+rc-service mosquitto enable
+rc-service mosquitto start
 ```
 
 > ⚠️ **The password you set here must match `MQTT_PASSWORD` in the Orange Pi's `.env` file and in `pisowifi_mqtt_subscriber.sh`.**
@@ -62,8 +62,8 @@ ssh root@10.0.0.1 "chmod +x /usr/bin/pisowifi_mqtt_subscriber.sh"
 # Copy the init.d service
 scp pisowifi_mqtt.init root@10.0.0.1:/etc/init.d/pisowifi_mqtt
 
-# Make it executable and enable
-ssh root@10.0.0.1 "chmod +x /etc/init.d/pisowifi_mqtt && /etc/init.d/pisowifi_mqtt enable && /etc/init.d/pisowifi_mqtt start"
+# Make it executable, add to startup, and start it
+ssh root@10.0.0.1 "chmod +x /etc/init.d/pisowifi_mqtt && rc-update add pisowifi_mqtt && rc-service pisowifi_mqtt start"
 ```
 
 ---
@@ -77,11 +77,11 @@ In OpenWrt LuCI: **Network → DHCP and DNS → Static Leases → Add**
 Or via UCI:
 ```sh
 uci add dhcp host
-uci set dhcp.@host[-1].mac="YOUR_ORANGE_PI_MAC"
+uci set dhcp.@host[-1].mac="AA:BB:CC:DD:EE:FF"   # ← your Orange Pi MAC
 uci set dhcp.@host[-1].ip="10.0.0.2"
 uci set dhcp.@host[-1].name="orangepi"
 uci commit dhcp
-/etc/init.d/dnsmasq restart
+rc-service dnsmasq restart
 ```
 
 ---
@@ -132,8 +132,8 @@ nft list set ip pisowifi authorized_users
 
 | Problem | Fix |
 |---|---|
-| `[MQTT] Initial connect failed` on Orange Pi | Check Mosquitto is running: `ssh root@10.0.0.1 "/etc/init.d/mosquitto status"` |
-| `nft: Operation not permitted` | Make sure `kmod-nft-core` and `nftables` are installed |
-| `jsonfilter: command not found` | `opkg install jsonfilter` |
-| Users can't reach portal | Check DNAT rule in `filter_forward` chain — ensure `10.0.0.2` is reachable from LAN |
-| Subscriber dies after router reboot | Check `/etc/init.d/pisowifi_mqtt enable` was run |
+| `[MQTT] Initial connect failed` on Orange Pi | Check Mosquitto is running: `ssh root@10.0.0.1 "rc-service mosquitto status"` |
+| `nft: Operation not permitted` | Make sure `kmod-nft-core` and `nftables` are installed: `apk add kmod-nft-core nftables` |
+| `jsonfilter: command not found` | `apk add jsonfilter` |
+| Users can't reach portal | Check DNAT rule in `nat_prerouting` chain — ensure `10.0.0.2` is reachable from LAN |
+| Subscriber dies after router reboot | Check `rc-update add pisowifi_mqtt` was run |

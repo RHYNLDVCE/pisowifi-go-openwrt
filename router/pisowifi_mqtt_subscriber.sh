@@ -12,12 +12,12 @@
 #   2. chmod +x /usr/bin/pisowifi_mqtt_subscriber.sh
 #   3. Copy pisowifi_mqtt.init to /etc/init.d/pisowifi_mqtt
 #   4. chmod +x /etc/init.d/pisowifi_mqtt
-#   5. /etc/init.d/pisowifi_mqtt enable
-#   6. /etc/init.d/pisowifi_mqtt start
+#   5. rc-update add pisowifi_mqtt
+#   6. rc-service pisowifi_mqtt start
 #
 # Dependencies (install on router):
-#   opkg update
-#   opkg install mosquitto mosquitto-client-ssl kmod-nft-core nftables conntrack-tools
+#   apk update
+#   apk add mosquitto mosquitto-client-ssl kmod-nft-core nftables conntrack-tools jsonfilter
 
 MQTT_HOST="localhost"
 MQTT_PORT="1883"

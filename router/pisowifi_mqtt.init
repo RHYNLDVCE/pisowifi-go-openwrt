@@ -1,31 +1,40 @@
-#!/bin/sh /etc/rc.common
+#!/sbin/openrc-run
 # /etc/init.d/pisowifi_mqtt
-# OpenWrt init.d service for the PisoWifi MQTT subscriber.
+# OpenRC service for the PisoWifi MQTT subscriber.
+# Used on OpenWrt 24.x (apk-based, OpenRC init system).
 #
 # Install:
-#   cp pisowifi_mqtt.init /etc/init.d/pisowifi_mqtt
+#   scp pisowifi_mqtt.init root@10.0.0.1:/etc/init.d/pisowifi_mqtt
 #   chmod +x /etc/init.d/pisowifi_mqtt
-#   /etc/init.d/pisowifi_mqtt enable
-#   /etc/init.d/pisowifi_mqtt start
+#   rc-update add pisowifi_mqtt
+#   rc-service pisowifi_mqtt start
 
-START=95
-STOP=10
-
-USE_PROCD=1
+description="PisoWifi MQTT subscriber — enforces nftables rules from Orange Pi commands"
 
 PROG="/usr/bin/pisowifi_mqtt_subscriber.sh"
+PIDFILE="/var/run/pisowifi_mqtt.pid"
 LOGFILE="/var/log/pisowifi_mqtt.log"
 
-start_service() {
-    procd_open_instance
-    procd_set_param command /bin/sh "$PROG"
-    procd_set_param stdout 1
-    procd_set_param stderr 1
-    procd_set_param respawn 3600 5 0  # respawn if it dies: threshold=3600s, timeout=5s, retry=forever
-    procd_close_instance
+depend() {
+    need net mosquitto
+    after firewall
 }
 
-stop_service() {
-    # procd handles the kill; nothing extra needed
-    return 0
+start() {
+    ebegin "Starting PisoWifi MQTT subscriber"
+    start-stop-daemon --start \
+        --background \
+        --make-pidfile \
+        --pidfile "$PIDFILE" \
+        --stdout "$LOGFILE" \
+        --stderr "$LOGFILE" \
+        --exec /bin/sh -- "$PROG"
+    eend $?
+}
+
+stop() {
+    ebegin "Stopping PisoWifi MQTT subscriber"
+    start-stop-daemon --stop \
+        --pidfile "$PIDFILE"
+    eend $?
 }
