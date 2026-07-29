@@ -134,22 +134,37 @@ table ip pisowifi {
 
     chain filter_forward {
         type filter hook forward priority filter; policy drop;
-        ct state related,established accept
+        ct state established,related accept
+        
+        # 1. Allow the Orange Pi (10.0.0.2) full internet access
+        iifname "${LAN}" ip saddr 10.0.0.2 accept
+        oifname "${LAN}" ip daddr 10.0.0.2 accept
+
+        # 2. Allow authorized users
         iifname "${LAN}" ether saddr @authorized_users accept
         oifname "${LAN}" ether daddr @authorized_users accept
+        
+        # 3. Allow DNS for everyone
         iifname "${LAN}" udp dport 53 accept
         iifname "${LAN}" tcp dport 53 accept
+        
+        # 4. Drop HTTPS for unauthorized users (prevents timeouts)
         iifname "${LAN}" ether saddr != @authorized_users tcp dport 443 drop
     }
 
     chain nat_prerouting {
         type nat hook prerouting priority dstnat; policy accept;
+        
+        # Do not intercept the Orange Pi's own traffic
+        iifname "${LAN}" ip saddr 10.0.0.2 accept
+        
         # Make the portal explicitly accessible at 10.0.0.1 for everyone (auth & unauth)
         iifname "${LAN}" ip daddr 10.0.0.1 tcp dport 80 dnat to 10.0.0.2:80
         
         # Authorized users: send DNS to Cloudflare
         iifname "${LAN}" ether saddr @authorized_users udp dport 53 dnat to 1.1.1.1:53
         iifname "${LAN}" ether saddr @authorized_users tcp dport 53 dnat to 1.1.1.1:53
+        
         # Unauthorized users: redirect DNS to router, HTTP/HTTPS to Orange Pi portal
         iifname "${LAN}" ether saddr != @authorized_users udp dport 53 dnat to 10.0.0.1:53
         iifname "${LAN}" ether saddr != @authorized_users tcp dport 53 dnat to 10.0.0.1:53
