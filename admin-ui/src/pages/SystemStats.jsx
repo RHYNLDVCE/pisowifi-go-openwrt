@@ -60,16 +60,24 @@ export default function SystemStats() {
           const rUsed = rData.mem_total - rData.mem_avail;
           const rPct = Math.round((rUsed / rData.mem_total) * 100);
           
+          let rDiskPct = 'N/A';
+          let rDiskFree = 'N/A';
+          if (rData.disk_total) {
+             const rDiskUsed = rData.disk_total - rData.disk_free;
+             rDiskPct = Math.round((rDiskUsed / rData.disk_total) * 100);
+             rDiskFree = (rData.disk_free / 1024 / 1024).toFixed(2); // Convert kB to GB
+          }
+
           setRouterStats({
             cpu: rData.load || '0',
-            temp: 'N/A', // Routers usually don't expose thermal zones easily
+            temp: rData.temp || 'N/A',
             ram: rPct,
             ram_used: (rUsed / 1024 / 1024).toFixed(2), // GB
             ram_total: (rData.mem_total / 1024 / 1024).toFixed(2), // GB
-            disk: 'N/A',
-            disk_free: 'N/A',
+            disk: rDiskPct,
+            disk_free: rDiskFree,
             uptime: formatUptime(rData.uptime),
-            ips: 'See router interface for IPs',
+            ips: rData.ips ? rData.ips.replace(/\\n/g, '\n') : 'See router interface for IPs',
           });
         }
         

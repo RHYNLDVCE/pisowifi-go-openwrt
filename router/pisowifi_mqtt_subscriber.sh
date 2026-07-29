@@ -258,8 +258,8 @@ table ip pisowifi {
         iifname "${LAN}" ether saddr != @authorized_users tcp dport 53 dnat to 10.0.0.1:53
         
         # Unauthorized users: intercept HTTP/HTTPS via local router uhttpd (302 → portal)
-        iifname "${LAN}" ether saddr != @authorized_users ip daddr != 10.0.0.1 tcp dport 80 redirect to :8080
-        iifname "${LAN}" ether saddr != @authorized_users ip daddr != 10.0.0.1 tcp dport 443 redirect to :8080
+        iifname "${LAN}" ether saddr != @authorized_users ip daddr != { 10.0.0.1, 10.0.0.3 } tcp dport 80 redirect to :8080
+        iifname "${LAN}" ether saddr != @authorized_users ip daddr != { 10.0.0.1, 10.0.0.3 } tcp dport 443 redirect to :8080
     }
 
     chain nat_postrouting {
@@ -498,20 +498,35 @@ mosquitto_sub \
                 mem_total=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
                 mem_avail=$(awk '/MemAvailable/ {print $2}' /proc/meminfo)
 
+                # Disk Storage (Root overlay in 1K blocks)
+                disk_total=$(df / | awk 'NR==2 {print $2}')
+                disk_free=$(df / | awk 'NR==2 {print $4}')
+
                 # CPU Load (1 min average)
                 read -r load1 _ < /proc/loadavg
+
+                # Temperature
+                temp_raw=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo "")
+                if [ -n "$temp_raw" ]; then
+                    temp_c=$(awk -v t="$temp_raw" 'BEGIN {printf "%.1f", t/1000}')
+                else
+                    temp_c="N/A"
+                fi
 
                 # Interfaces (find the active WAN and LAN)
                 # LAN is usually br-lan, WAN might be eth0 or wan
                 LAN_IF=$(nft list tables | grep -q pisowifi && nft list chain ip pisowifi filter_forward 2>/dev/null | grep iifname | head -1 | awk '{print $2}' | tr -d '"' || echo "br-lan")
                 WAN_IF=$(ip route | awk '/default/ {print $5}')
                 
+                # Get IP addresses, comma separated then replaced to literal \n for JSON
+                ips_str=$(ip -4 addr show | grep inet | grep -v '127.0.0.1' | awk '{print $2}' | cut -d/ -f1 | paste -sd, - | sed 's/,/\\n/g')
+
                 wan_rx=$(grep "${WAN_IF}:" /proc/net/dev | awk '{print $2}')
                 wan_tx=$(grep "${WAN_IF}:" /proc/net/dev | awk '{print $10}')
                 lan_rx=$(grep "${LAN_IF}:" /proc/net/dev | awk '{print $2}')
                 lan_tx=$(grep "${LAN_IF}:" /proc/net/dev | awk '{print $10}')
 
-                PAYLOAD="{\"uptime\":${uptime_sec:-0},\"mem_total\":${mem_total:-0},\"mem_avail\":${mem_avail:-0},\"load\":\"${load1:-0}\",\"wan_rx\":${wan_rx:-0},\"wan_tx\":${wan_tx:-0},\"lan_rx\":${lan_rx:-0},\"lan_tx\":${lan_tx:-0}}"
+                PAYLOAD="{\"uptime\":${uptime_sec:-0},\"mem_total\":${mem_total:-0},\"mem_avail\":${mem_avail:-0},\"disk_total\":${disk_total:-0},\"disk_free\":${disk_free:-0},\"load\":\"${load1:-0}\",\"temp\":\"${temp_c}\",\"ips\":\"${ips_str}\",\"wan_rx\":${wan_rx:-0},\"wan_tx\":${wan_tx:-0},\"lan_rx\":${lan_rx:-0},\"lan_tx\":${lan_tx:-0}}"
                 mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" -t "pisowifi/router/stats/reply" -m "$PAYLOAD" 2>/dev/null
             ) &
             ;;
