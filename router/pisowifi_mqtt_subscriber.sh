@@ -17,7 +17,7 @@
 #
 # Dependencies (install on router):
 #   apk update
-#   apk add mosquitto mosquitto-client-ssl kmod-nft-core nftables
+#   apk add mosquitto mosquitto-client-ssl kmod-nft-core nftables tc-full kmod-sched-cake kmod-sched-core kmod-ifb
 #   (conntrack and jsonfilter are already built into OpenWrt)
 
 MQTT_HOST="10.0.0.1"
@@ -144,6 +144,9 @@ table ip pisowifi {
 
     chain nat_prerouting {
         type nat hook prerouting priority dstnat; policy accept;
+        # Make the portal explicitly accessible at 10.0.0.1 for everyone (auth & unauth)
+        iifname "${LAN}" ip daddr 10.0.0.1 tcp dport 80 dnat to 10.0.0.2:80
+        
         # Authorized users: send DNS to Cloudflare
         iifname "${LAN}" ether saddr @authorized_users udp dport 53 dnat to 1.1.1.1:53
         iifname "${LAN}" ether saddr @authorized_users tcp dport 53 dnat to 1.1.1.1:53

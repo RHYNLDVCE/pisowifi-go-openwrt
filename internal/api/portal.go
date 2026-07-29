@@ -41,35 +41,35 @@ func RegisterPortalRoutes(app *fiber.App) {
 	// --- Captive portal detection endpoints ---
 	// Android: expects HTTP 204 from /generate_204
 	app.Get("/generate_204", func(c *fiber.Ctx) error {
-		return c.Redirect("/", fiber.StatusFound)
+		return c.Redirect("http://10.0.0.1/", fiber.StatusFound)
 	})
 	// Android/Chrome: connectivitycheck.gstatic.com proxy
 	app.Get("/gen_204", func(c *fiber.Ctx) error {
-		return c.Redirect("/", fiber.StatusFound)
+		return c.Redirect("http://10.0.0.1/", fiber.StatusFound)
 	})
 	// Windows: /ncsi.txt (expects "Microsoft NCSI")
 	app.Get("/ncsi.txt", func(c *fiber.Ctx) error {
-		return c.Redirect("/", fiber.StatusFound)
+		return c.Redirect("http://10.0.0.1/", fiber.StatusFound)
 	})
 	// Windows: /connecttest.txt
 	app.Get("/connecttest.txt", func(c *fiber.Ctx) error {
-		return c.Redirect("/", fiber.StatusFound)
+		return c.Redirect("http://10.0.0.1/", fiber.StatusFound)
 	})
 	// macOS/iOS: /hotspot-detect.html
 	app.Get("/hotspot-detect.html", func(c *fiber.Ctx) error {
-		return c.Redirect("/", fiber.StatusFound)
+		return c.Redirect("http://10.0.0.1/", fiber.StatusFound)
 	})
 	app.Get("/library/test/success.html", func(c *fiber.Ctx) error {
-		return c.Redirect("/", fiber.StatusFound)
+		return c.Redirect("http://10.0.0.1/", fiber.StatusFound)
 	})
 	// Generic redirect
 	app.Get("/redirect", func(c *fiber.Ctx) error {
-		return c.Redirect("/", fiber.StatusFound)
+		return c.Redirect("http://10.0.0.1/", fiber.StatusFound)
 	})
 
 	// Catch-all — must be last
 	app.Get("/*", func(c *fiber.Ctx) error {
-		return c.Redirect("/", fiber.StatusFound)
+		return c.Redirect("http://10.0.0.1/", fiber.StatusFound)
 	})
 }
 
@@ -78,6 +78,12 @@ func RegisterPortalRoutes(app *fiber.App) {
 // ---------------------------------------------------------------------------
 
 func portalHome(c *fiber.Ctx) error {
+	// Force the URL in the browser to be 10.0.0.1 to avoid breaking when authorized
+	host := c.Hostname()
+	if host != "10.0.0.1" && host != "10.0.0.2" {
+		return c.Redirect("http://10.0.0.1/", fiber.StatusFound)
+	}
+
 	clientIP := c.IP()
 	clientMAC := infrastructure.GetMACFromIP(clientIP)
 
