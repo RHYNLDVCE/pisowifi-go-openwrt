@@ -1,0 +1,896 @@
+{% extends "base.html" %}
+
+{% block title %}Rewards - REYES Starlink{% endblock %}
+
+{% block styles %}
+<link href="/static/css/fonts.css" rel="stylesheet">
+<script src="/static/js/lucide.min.js"></script>
+
+<style>
+    :root {
+        --primary: #0f172a;
+        --primary-light: #1e293b;
+        --accent: #2563eb;
+        --accent-hover: #1d4ed8;
+        --danger: #dc2626;
+        --warning: #f59e0b;
+        --success: #10b981;
+        --surface: #ffffff;
+        --bg-body: #f8fafc;
+        --text-main: #0f172a;
+        --text-muted: #64748b;
+        --border-color: #e2e8f0;
+    }
+
+    body { 
+        background-color: var(--bg-body); 
+        color: var(--text-main); 
+        font-family: 'Plus Jakarta Sans', system-ui, sans-serif; 
+        margin: 0;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    .main-wrapper { 
+        max-width: 480px; 
+        margin: 0 auto; 
+        min-height: 100vh; 
+        display: flex; 
+        flex-direction: column; 
+        background: var(--bg-body);
+        border-left: 1px solid var(--border-color);
+        border-right: 1px solid var(--border-color);
+        box-shadow: 0 0 20px rgba(0,0,0,0.03);
+    }
+    
+    /* HEADER DESIGN UPDATE */
+    .header-card {
+        background-color: var(--primary);
+        color: #ffffff; 
+        padding: 3.5rem 1.5rem 1.5rem; 
+        position: relative;
+    }
+
+    .btn-floating-back {
+        position: absolute;
+        top: 1.25rem;
+        left: 1.25rem;
+        color: #94a3b8;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        text-decoration: none;
+        font-size: 0.875rem;
+        font-weight: 600;
+        transition: color 0.2s ease;
+    }
+    .btn-floating-back:hover {
+        color: #ffffff;
+    }
+    
+    .stats-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: var(--primary-light);
+        padding: 1.25rem;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .stat-box {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+    }
+
+    .stat-box:first-child {
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
+        margin-right: 1.5rem;
+    }
+
+    .points-label, .time-label { 
+        font-size: 0.75rem; 
+        font-weight: 500; 
+        color: #cbd5e1;
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .points-val, .time-val { 
+        font-size: 2rem; 
+        font-weight: 700; 
+        line-height: 1;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .unit-small {
+        font-size: 0.5em;
+        margin-left: 1px;
+        margin-right: 2px;
+        color: #94a3b8;
+        vertical-align: baseline;
+        text-transform: uppercase;
+        font-weight: 700;
+    }
+    
+    /* CONTENT AREA */
+    .content-area { 
+        padding: 0 1.5rem 2.5rem; 
+        flex-grow: 1; 
+        background: var(--bg-body);
+    }
+    
+    .section-title { 
+        font-size: 1.125rem; 
+        font-weight: 600; 
+        color: var(--text-main); 
+        margin: 2rem 0 1.25rem; 
+        display: flex; 
+        align-items: center; 
+        gap: 0.5rem;
+    }
+    
+    /* PROMO CARD DESIGN */
+    .promo-card {
+        background: var(--surface); 
+        border-radius: 12px; 
+        padding: 1rem; 
+        margin-bottom: 1rem;
+        border: 1px solid var(--border-color);
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center;
+        gap: 0.5rem;
+        transition: border-color 0.2s ease;
+    }
+
+    .promo-card:hover {
+        border-color: #cbd5e1;
+    }
+    
+    .promo-info {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 0.25rem;
+    }
+
+    .promo-name { 
+        margin: 0; 
+        font-size: 1rem; 
+        font-weight: 600; 
+        color: var(--text-main); 
+    }
+    
+    .promo-cost { 
+        margin: 0;
+        color: var(--text-muted); 
+        font-size: 0.875rem; 
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+    
+    /* BUTTONS */
+    .btn-redeem {
+        background: var(--surface); 
+        color: var(--accent); 
+        border: 1px solid var(--accent); 
+        padding: 0.5rem 1rem;
+        border-radius: 6px; 
+        font-weight: 600; 
+        font-size: 0.85rem; 
+        cursor: pointer;
+        transition: all 0.2s ease;
+        min-width: 90px;
+        text-align: center;
+        flex-shrink: 0;
+        font-family: inherit;
+    }
+    
+    .btn-redeem:hover:not(:disabled) { 
+        background: var(--accent); 
+        color: #ffffff;
+    }
+    
+    .btn-redeem:disabled { 
+        background: #f1f5f9; 
+        color: #94a3b8; 
+        border-color: #e2e8f0;
+        cursor: not-allowed; 
+    }
+    
+    /* EMPTY STATE */
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1.5rem;
+        color: var(--text-muted);
+        background: var(--surface);
+        border-radius: 12px;
+        border: 1px dashed var(--border-color);
+        margin-top: 1rem;
+    }
+
+    .empty-state h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1rem;
+        color: var(--text-main);
+    }
+
+    /* VOUCHER STYLES */
+    .voucher-card {
+        background: var(--surface);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .voucher-code {
+        font-family: monospace;
+        font-size: 1.2rem;
+        font-weight: bold;
+        letter-spacing: 2px;
+        color: var(--text-main);
+    }
+    .voucher-value {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+    .btn-copy {
+        background: transparent;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        padding: 0.5rem;
+        cursor: pointer;
+        color: var(--text-muted);
+        transition: all 0.2s ease;
+    }
+    .btn-copy:hover {
+        background: var(--bg-body);
+        color: var(--text-main);
+    }
+
+    /* MODAL STYLES */
+    .modal-overlay {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(2px);
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+    }
+
+    .modal-overlay.active {
+        opacity: 1;
+        pointer-events: all;
+    }
+
+    .modal-card {
+        background: var(--surface);
+        width: 85%;
+        max-width: 320px;
+        padding: 2rem 1.5rem;
+        border-radius: 16px;
+        text-align: center;
+        transform: translateY(10px);
+        transition: transform 0.2s ease;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+
+    .modal-overlay.active .modal-card {
+        transform: translateY(0);
+    }
+
+    .modal-icon-wrapper {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 1.25rem;
+    }
+
+    .modal-title {
+        margin: 0 0 0.75rem;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-main);
+    }
+
+    .modal-text {
+        margin: 0 0 1.5rem;
+        font-size: 0.95rem;
+        color: var(--text-muted);
+        line-height: 1.5;
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: 0.75rem;
+        justify-content: center;
+    }
+
+    .btn-modal {
+        flex: 1;
+        padding: 0.75rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        font-family: inherit;
+    }
+
+    .btn-cancel { 
+        background: var(--bg-body); 
+        color: var(--text-main); 
+        border: 1px solid var(--border-color);
+    }
+    .btn-cancel:hover { background: #e2e8f0; }
+    
+    .btn-confirm { 
+        background: var(--surface); 
+        color: var(--accent); 
+        border: 1px solid var(--accent); 
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-family: inherit;
+    }
+    .btn-confirm:hover { 
+        background: var(--accent); 
+        color: #ffffff;
+    }
+    .btn-confirm:active {
+        transform: translateY(1px);
+    }
+
+    .btn-full { width: 100%; }
+
+    .lucide-spin { animation: spin 1s linear infinite; }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="main-wrapper">
+    <div class="header-card">
+        <a href="/" class="btn-floating-back">
+            <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+            Back
+        </a>
+        
+        <div class="stats-container">
+            <div class="stat-box">
+                <div class="points-label">Points</div>
+                <div class="points-val">
+                    <i data-lucide="credit-card" style="width: 24px; height: 24px; color: #94a3b8;"></i>
+                    {{ points|floatformat:2 }}
+                </div>
+            </div>
+
+            <div class="stat-box">
+                <div class="time-label">Time Remaining</div>
+                <div class="time-val" id="timeDisplay">
+                    --:--
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="content-area">
+        {% if not enabled and not voucher_enabled %}
+            <div class="empty-state">
+                <div style="display: flex; justify-content: center; margin-bottom: 1rem;">
+                    <i data-lucide="power-off" style="width: 32px; height: 32px; color: #94a3b8;"></i>
+                </div>
+                <h3>System Offline</h3>
+                <p style="margin:0; font-size: 0.875rem;">The rewards system is currently unavailable.</p>
+            </div>
+        {% else %}
+            
+            {% if enabled %}
+            <div class="section-title">
+                <i data-lucide="list" style="width: 20px; height: 20px; color: var(--text-muted);"></i>
+                Reward Catalog
+            </div>
+            
+            {% if promos|length == 0 %}
+                <div class="empty-state">
+                    <p style="margin: 0;">No active promotions at this time.</p>
+                </div>
+            {% endif %}
+
+            {% for p in promos %}
+            <div class="promo-card">
+                <div class="promo-info">
+                    <div class="promo-name">{{ p.Name }}</div>
+                    <div class="promo-cost">
+                        <i data-lucide="arrow-right-circle" style="width: 14px; height: 14px;"></i>
+                        {{ p.Cost|floatformat:2 }} Points
+                    </div>
+                </div>
+                
+                <button class="btn-redeem" 
+                    data-id="{{ p.ID }}" 
+                    data-name="{{ p.Name }}" 
+                    data-cost="{{ p.Cost|floatformat:2 }}"
+                    onclick="openConfirmModal(this)"
+                    {% if points < p.Cost %}disabled{% endif %}>
+                    {% if points < p.Cost %}
+                        Locked
+                    {% else %}
+                        Redeem
+                    {% endif %}
+                </button>
+            </div>
+            {% endfor %}
+            {% endif %}
+            
+            {% if voucher_enabled %}
+            <div class="section-title" style="margin-top: 3rem;">
+                <i data-lucide="ticket" style="width: 20px; height: 20px; color: var(--text-muted);"></i>
+                Redeem Voucher
+            </div>
+            <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1rem;">
+                Enter a voucher code from a friend to claim its value.
+            </p>
+            <div style="box-sizing: border-box; width: 100%; display: flex; gap: 8px; margin-bottom: 2.5rem; background: var(--surface); border: 1px solid var(--border-color); padding: 0.5rem; border-radius: 12px;">
+                <input type="text" id="redeemCodeInput" placeholder="ENTER CODE" style="flex: 1; min-width: 0; border: none; outline: none; background: transparent; font-family: monospace; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px; padding-left: 0.5rem; color: var(--text-main);">
+                <button class="btn-confirm" onclick="redeemVoucherDirect()" id="btnSubmitRedeemDirect" style="padding: 0.75rem 1.25rem; border-radius: 8px; font-weight: 700; flex-shrink: 0;">Claim</button>
+            </div>
+
+            <div class="section-title">
+                <i data-lucide="gift" style="width: 20px; height: 20px; color: var(--text-muted);"></i>
+                Create Voucher
+            </div>
+            <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1.5rem;">
+                Convert your time or points into a shareable voucher code.
+            </p>
+
+            <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1rem;">From Time</h4>
+            <div style="box-sizing: border-box; width: 100%; display: flex; gap: 8px; margin-bottom: 2rem; background: var(--surface); border: 1px solid var(--border-color); padding: 0.5rem; border-radius: 12px;">
+                <input type="number" id="voucherTimeAmountDirect" placeholder="Minutes (e.g. 60)" style="flex: 1; min-width: 0; border: none; outline: none; background: transparent; font-size: 1rem; padding-left: 0.5rem; color: var(--text-main);">
+                <button class="btn-confirm" onclick="generateVoucherDirect('time')" id="btnSubmitGenerateTimeDirect" style="padding: 0.75rem 1.25rem; border-radius: 8px; font-weight: 700; flex-shrink: 0;">Convert</button>
+            </div>
+
+            {% if enabled and voucher_point_promos|length > 0 %}
+            <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1rem;">From Points (Promos)</h4>
+            {% for p in voucher_point_promos %}
+            <div class="promo-card">
+                <div class="promo-info">
+                    <div class="promo-name">{{ p.Minutes }} Mins Voucher</div>
+                    <div class="promo-cost" style="color: #6366f1;">
+                        <i data-lucide="zap" style="width: 14px; height: 14px;"></i>
+                        {{ p.Cost|floatformat:2 }} Points
+                    </div>
+                </div>
+                <button class="btn-redeem" 
+                    id="btnGeneratePoints_{{ p.ID }}"
+                    onclick="generateVoucherDirect('points', {{ p.ID }})"
+                    {% if points < p.Cost %}disabled{% endif %}>
+                    {% if points < p.Cost %}
+                        Locked
+                    {% else %}
+                        Generate
+                    {% endif %}
+                </button>
+            </div>
+            {% endfor %}
+            {% endif %}
+
+            <div class="section-title" style="margin-top: 3rem;">
+                <i data-lucide="inbox" style="width: 20px; height: 20px; color: var(--text-muted);"></i>
+                My Unused Vouchers
+            </div>
+            {% if active_vouchers|length == 0 %}
+                <div class="empty-state" style="padding: 2rem 1.5rem;">
+                    <p style="margin: 0;">You don't have any active vouchers.</p>
+                </div>
+            {% else %}
+                {% for v in active_vouchers %}
+                <div class="voucher-card">
+                    <div>
+                        <div class="voucher-code">{{ v.Code }}</div>
+                        <div class="voucher-value">
+                            {% if v.Type == "time" %}
+                                {{ v.Value|floatformat:0 }} Minutes
+                            {% else %}
+                                {{ v.Value|floatformat:2 }} Points
+                            {% endif %}
+                        </div>
+                    </div>
+                    <button class="btn-copy" onclick="copyCode('{{ v.Code }}')" title="Copy Code">
+                        <i data-lucide="copy" style="width: 18px; height: 18px;"></i>
+                    </button>
+                </div>
+                {% endfor %}
+            {% endif %}
+            {% endif %}
+
+        {% endif %}
+
+    </div>
+</div>
+
+<div id="rewardModal" class="modal-overlay">
+    <div class="modal-card">
+        <div id="modalContent"></div>
+    </div>
+</div>
+
+<div id="rewardModal" class="modal-overlay">
+    <div class="modal-card">
+        <div id="modalContent"></div>
+    </div>
+</div>
+
+<!-- MINIMAL RESULT MODAL -->
+<div id="voucherModal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 320px; text-align: center; padding: 2rem;">
+        <div id="voucherResultSection">
+            <!-- Result content injected dynamically -->
+        </div>
+    </div>
+</div>
+
+<div id="toastContainer" style="position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none;"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize icons on load
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+
+    // --- TIMER LOGIC ---
+    var mac = "{{ mac | default:'Unknown' }}"; 
+    let localTime = 0;
+    let localStatus = "new";
+
+    // 1. Instantly load cached time for a seamless UI experience
+    const cachedTime = localStorage.getItem("piso_time_" + mac);
+    if (cachedTime && !isNaN(parseInt(cachedTime))) {
+        localTime = parseInt(cachedTime);
+        updateTimerDisplay(localTime);
+    }
+
+    // 2. Fetch the true, authoritative time from the server
+    async function syncTimeWithServer() {
+        if (mac === "Unknown" || !mac) return;
+        
+        try {
+            let res = await fetch(`/status?mac=${mac}`);
+            let data = await res.json();
+            
+            if (data && data.time_remaining !== undefined) {
+                localTime = parseInt(data.time_remaining);
+                localStatus = data.status || "new";
+                updateTimerDisplay(localTime);
+                localStorage.setItem("piso_time_" + mac, localTime);
+                console.info('[Rewards] Timer synchronized with server:', localTime, 'Status:', localStatus);
+            }
+        } catch(e) {
+            console.warn('[Rewards] Failed to sync time with server, falling back to local cache.');
+        }
+    }
+
+    // Execute sync immediately on page load
+    syncTimeWithServer();
+
+    // Periodically sync the status and time from the server every 5 seconds
+    setInterval(syncTimeWithServer, 5000);
+
+    // 3. Tick down the time locally while the user browses the rewards
+    setInterval(() => {
+        if (localStatus === "connected" && localTime > 0) {
+            localTime--;
+            updateTimerDisplay(localTime);
+            // Sync it back to local storage periodically
+            if (localTime % 5 === 0) {
+                localStorage.setItem("piso_time_" + mac, localTime);
+            }
+        } else if (localTime <= 0) {
+            updateTimerDisplay(0);
+        }
+    }, 1000);
+
+    function updateTimerDisplay(seconds) {
+        const display = document.getElementById("timeDisplay");
+        if (!display) return;
+        
+        const { htmlText } = formatHumanTime(seconds);
+        display.innerHTML = htmlText;
+    }
+
+    function formatHumanTime(seconds, hideZeroSeconds = false) {
+        if (!Number.isFinite(seconds) || seconds <= 0) {
+            return { plainText: "--", htmlText: "--", length: 2 };
+        }
+
+        const YEAR = 31104000;
+        const MONTH = 2592000;
+        const DAY = 86400;
+        const HOUR = 3600;
+        const MIN = 60;
+
+        const y = Math.floor(seconds / YEAR);
+        const mo = Math.floor((seconds % YEAR) / MONTH);
+        const d = Math.floor((seconds % MONTH) / DAY);
+        const h = Math.floor((seconds % DAY) / HOUR);
+        const m = Math.floor((seconds % HOUR) / MIN);
+        const s = seconds % MIN;
+
+        const partsText = []; const partsHtml = [];
+        const unit = (label) => `<span class="unit-small">${label}</span>`;
+
+        if (y > 0) { partsText.push(`${y}YR.`); partsHtml.push(`${y}${unit("YR.")}`); }
+        if (mo > 0) { partsText.push(`${mo}MO.`); partsHtml.push(`${mo}${unit("MO.")}`); }
+        if (d > 0) { partsText.push(`${d}D.`); partsHtml.push(`${d}${unit("D.")}`); }
+        if (h > 0) { partsText.push(`${h}HR.`); partsHtml.push(`${h}${unit("HR.")}`); }
+
+        if (m > 0 || y > 0 || mo > 0 || d > 0 || h > 0) {
+            partsText.push(`${m}MIN.`); partsHtml.push(`${m}${unit("MIN.")}`);
+        }
+
+        if (!hideZeroSeconds || s > 0) {
+            partsText.push(`${s}SEC.`);
+            partsHtml.push(`<span style="color: #cbd5e1;">${s}</span><span class="unit-small" style="color: #cbd5e1;">SEC.</span>`);
+        }
+
+        const plainText = partsText.join(" ");
+        const htmlText = `<span style="display:inline-block; font-size: clamp(1rem, 4vw, 1.5rem);">${partsHtml.join("")}</span>`;
+
+        return { plainText, htmlText, length: plainText.length };
+    }
+
+    // --- MODAL & REDEMPTION LOGIC ---
+    const modal = document.getElementById('rewardModal');
+    const modalContent = document.getElementById('modalContent');
+    let currentPromoId = null;
+
+    // Show confirmation dialog
+    function openConfirmModal(btn) {
+        const id = btn.getAttribute('data-id');
+        const name = btn.getAttribute('data-name');
+        const cost = btn.getAttribute('data-cost');
+        currentPromoId = parseInt(id);
+
+        modalContent.innerHTML = `
+            <div class="modal-icon-wrapper">
+                <i data-lucide="help-circle" style="width: 48px; height: 48px; color: var(--accent);"></i>
+            </div>
+            <h3 class="modal-title">Confirm Redemption</h3>
+            <p class="modal-text">
+                Confirm deduction of <b>${cost} points</b> in exchange for <b>"${name}"</b>.
+            </p>
+            <div class="modal-actions">
+                <button class="btn-modal btn-cancel" onclick="closeModal()">Cancel</button>
+                <button class="btn-modal btn-confirm" onclick="processRedemption()">Confirm</button>
+            </div>
+        `;
+        
+        lucide.createIcons();
+        modal.classList.add('active');
+    }
+
+    // Process redemption request
+    async function processRedemption() {
+        console.info('[Rewards] Initializing redemption process for promo ID:', currentPromoId);
+
+        modalContent.innerHTML = `
+            <div class="modal-icon-wrapper">
+                <i data-lucide="loader-2" class="lucide-spin" style="width: 48px; height: 48px; color: var(--text-muted);"></i>
+            </div>
+            <h3 class="modal-title">Processing</h3>
+            <p class="modal-text">Please wait while the transaction is finalized.</p>
+        `;
+        lucide.createIcons();
+
+        try {
+            let res = await fetch('/redeem_points', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ promo_id: currentPromoId })
+            });
+            let data = await res.json();
+            
+            closeModal();
+
+            if(data.status === "success") {
+                console.info('[Rewards] Redemption successful.');
+                showVoucherToast(data.message, false);
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                console.warn('[Rewards] Redemption rejected by server:', data.message);
+                showVoucherToast(data.message, true);
+            }
+        } catch(e) {
+            console.error('[Rewards] Network exception during redemption:', e);
+            closeModal();
+            showVoucherToast("Network connection failed. Please check connectivity.", true);
+        }
+    }
+
+
+
+    function closeModal() {
+        modal.classList.remove('active');
+    }
+
+    function finishRedemption() {
+        closeModal();
+        // The reload will now automatically trigger the syncTimeWithServer() function on boot
+        setTimeout(() => window.location.reload(), 200);
+    }
+
+    // Close modal on outside click
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+
+    // --- VOUCHER LOGIC ---
+    const vModal = document.getElementById('voucherModal');
+    
+    function closeVoucherModal() {
+        vModal.classList.remove('active');
+        setTimeout(() => window.location.reload(), 200);
+    }
+
+    function showVoucherToast(msg, isError) {
+        const container = document.getElementById('toastContainer');
+        const t = document.createElement('div');
+        t.style.padding = '8px 16px';
+        t.style.borderRadius = '6px';
+        t.style.color = 'white';
+        t.style.fontWeight = '600';
+        t.style.fontSize = '0.75rem';
+        t.style.background = isError ? 'var(--danger)' : 'var(--success)';
+        t.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+        t.style.animation = 'toastSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+        t.innerText = msg;
+        container.appendChild(t);
+        setTimeout(() => t.remove(), 3000);
+    }
+
+    async function generateVoucherDirect(type, promoId = null) {
+        let val = 0;
+        let btn = null;
+        let originalText = "";
+
+        if (type === 'time') {
+            val = parseFloat(document.getElementById("voucherTimeAmountDirect").value);
+            btn = document.getElementById("btnSubmitGenerateTimeDirect");
+            originalText = "Convert";
+            if (!val || val <= 0) {
+                showVoucherToast("Please enter a valid amount of minutes.", true);
+                return;
+            }
+        } else {
+            val = parseFloat(promoId);
+            btn = document.getElementById("btnGeneratePoints_" + promoId);
+            originalText = "Generate";
+        }
+
+        btn.disabled = true;
+        btn.innerText = "...";
+
+        try {
+            const res = await fetch("/generate_voucher", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ type: type, value: val })
+            });
+            const data = await res.json();
+            if (data.status === "success") {
+                showVoucherToast("Voucher Generated Successfully!", false);
+                const resSec = document.getElementById("voucherResultSection");
+                resSec.innerHTML = `
+                    <div style="display:flex; justify-content:center; margin-bottom:1rem;">
+                        <i data-lucide="check-circle-2" style="width: 48px; height: 48px; color: var(--success);"></i>
+                    </div>
+                    <h3 class="modal-title" style="margin-bottom:0.5rem; font-size:1.25rem;">Success!</h3>
+                    <p style="color:var(--text-muted); font-size:0.875rem;">Your code is ready to share.</p>
+                    <div style="background: var(--bg-body); padding: 1rem; border-radius: 8px; border: 1px dashed var(--border-color); margin: 1.5rem 0;">
+                        <span style="font-family: monospace; font-size: 1.75rem; font-weight: bold; letter-spacing: 3px; color:var(--text-main);">${data.code}</span>
+                    </div>
+                    <button class="btn-modal btn-confirm btn-full" onclick="copyCode('${data.code}')" style="margin-bottom: 0.5rem; border-radius:8px; padding:0.75rem;">Copy Code</button>
+                    <button class="btn-modal btn-cancel btn-full" onclick="closeVoucherModal()" style="border-radius:8px; padding:0.75rem; background:transparent;">Done</button>
+                `;
+                lucide.createIcons();
+                vModal.classList.add('active');
+            } else {
+                showVoucherToast(data.message, true);
+                btn.disabled = false;
+                btn.innerText = originalText;
+            }
+        } catch (err) {
+            showVoucherToast("Network error. Please try again.", true);
+            btn.disabled = false;
+            btn.innerText = originalText;
+        }
+    }
+
+    async function redeemVoucherDirect() {
+        const inputField = document.getElementById("redeemCodeInput");
+        const code = inputField.value.trim().toUpperCase();
+        if (!code) {
+            showVoucherToast("Please enter a code.", true);
+            return;
+        }
+
+        const btn = document.getElementById("btnSubmitRedeemDirect");
+        btn.disabled = true;
+        btn.innerText = "...";
+
+        try {
+            const res = await fetch("/redeem_voucher", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ code: code })
+            });
+            const data = await res.json();
+            if (data.status === "success") {
+                showVoucherToast("Successfully claimed voucher!", false);
+                inputField.value = '';
+                // Reload after a short delay so toast is visible
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                showVoucherToast(data.message, true);
+                btn.disabled = false;
+                btn.innerText = "Claim";
+            }
+        } catch (err) {
+            showVoucherToast("Network error. Please try again.", true);
+            btn.disabled = false;
+            btn.innerText = "Claim";
+        }
+    }
+
+    function copyCode(code) {
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(code).then(() => {
+                showVoucherToast("Code copied to clipboard!", false);
+            }).catch(() => {
+                showVoucherToast("Failed to copy code.", true);
+            });
+        } else {
+            // Fallback for HTTP Captive Portals
+            let textArea = document.createElement("textarea");
+            textArea.value = code;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-999999px";
+            textArea.style.top = "-999999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showVoucherToast("Code copied to clipboard!", false);
+            } catch (err) {
+                showVoucherToast("Failed to copy code.", true);
+            }
+            textArea.remove();
+        }
+    }
+
+</script>
+<style>
+    @keyframes toastSlideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+</style>
+{% endblock %}

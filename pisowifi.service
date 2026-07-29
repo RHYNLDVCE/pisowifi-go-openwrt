@@ -1,0 +1,27 @@
+[Unit]
+Description=PisoWifi Golang Service
+Wants=network-online.target
+# Wait ONLY for the virtual bridge
+After=network.target network-online.target sys-subsystem-net-devices-br0.device
+# Bind ONLY to the virtual bridge. If antennas unplug, the bridge stays up, and so does the portal!
+BindsTo=sys-subsystem-net-devices-br0.device
+
+[Service]
+User=root
+# Ensure this matches the exact path of your folder on the Orange Pi
+WorkingDirectory=/srv/pisowifi-golang
+
+# Run the compiled Go binary (Make sure you ran 'go build -o pisowifi-server cmd/server/main.go' first)
+ExecStart=/srv/pisowifi-golang/pisowifi-server
+
+# Restart on crash, but wait 5s to prevent CPU spam during boot loops
+Restart=always
+RestartSec=5
+TimeoutStopSec=3
+
+# The Go backend automatically triggers fail_safe.sh on shutdown, 
+# but we leave this here as a hard fallback if it crashes unexpectedly.
+ExecStopPost=/srv/pisowifi-golang/fail_safe.sh
+
+[Install]
+WantedBy=multi-user.target

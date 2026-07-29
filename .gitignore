@@ -1,0 +1,33 @@
+# Database & secrets
+pisowifi.db
+.env
+
+# Logs
+system.log
+system.log.*
+
+# Go build output
+pisowifi
+*.exe
+
+# Go module cache (keep go.sum)
+vendor/
+
+# Python leftovers (safe to ignore in case any remain)
+__pycache__/
+*.pyc
+*.pyo
+
+# Temp files
+*.tmp
+config.json.tmp
+config.json.corrupt
+.vscode/
+
+# Production runtime files
+pisowifi-server
+*.db-wal
+*.db-shm
+
+# Local configuration
+config.json

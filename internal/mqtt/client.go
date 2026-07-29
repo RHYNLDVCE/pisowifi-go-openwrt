@@ -1,0 +1,119 @@
+package mqtt
+
+// client.go — persistent MQTT client connecting the Orange Pi to the
+// OpenWrt router's Mosquitto broker.
+//
+// The Orange Pi NEVER enforces firewall rules locally. It only publishes
+// commands here; the router-side subscriber script applies them.
+
+import (
+	"encoding/json"
+	"fmt"
+	"time"
+
+	paho "github.com/eclipse/paho.mqtt.golang"
+
+	"pisowifi/internal/logger"
+)
+
+const (
+	// QoS 1 — at-least-once delivery. Good enough for allow/block commands;
+	// if the broker is momentarily down the publish will fail and log an error.
+	qos = 1
+
+	// connectTimeout is how long we wait for the initial broker connection.
+	connectTimeout = 5 * time.Second
+
+	// reconnectWait is the time between automatic reconnect attempts.
+	reconnectWait = 5 * time.Second
+)
+
+var mqttClient paho.Client
+
+// Init creates and connects the MQTT client to the router broker.
+// brokerURL example: "tcp://10.0.0.1:1883"
+// clientID:          "pisowifi-orangepi"
+func Init(brokerURL, clientID, username, password string) {
+	opts := paho.NewClientOptions()
+	opts.AddBroker(brokerURL)
+	opts.SetClientID(clientID)
+	if username != "" {
+		opts.SetUsername(username)
+		opts.SetPassword(password)
+	}
+
+	// Auto-reconnect is handled by paho natively
+	opts.SetAutoReconnect(true)
+	opts.SetMaxReconnectInterval(reconnectWait)
+	opts.SetCleanSession(false) // persist QoS 1 subscriptions across reconnects
+
+	opts.SetOnConnectHandler(func(_ paho.Client) {
+		logger.SystemLog("[MQTT] Connected to broker: " + brokerURL)
+	})
+	opts.SetConnectionLostHandler(func(_ paho.Client, err error) {
+		logger.SystemLog(fmt.Sprintf("[MQTT] Connection lost: %v — reconnecting...", err))
+	})
+	opts.SetReconnectingHandler(func(_ paho.Client, _ *paho.ClientOptions) {
+		logger.SystemLog("[MQTT] Attempting to reconnect to broker...")
+	})
+
+	mqttClient = paho.NewClient(opts)
+
+	token := mqttClient.Connect()
+	if token.WaitTimeout(connectTimeout) {
+		if err := token.Error(); err != nil {
+			logger.SystemLog(fmt.Sprintf("[MQTT] Initial connect failed: %v — will retry in background", err))
+		}
+	} else {
+		logger.SystemLog("[MQTT] Initial connect timed out — will retry in background")
+	}
+}
+
+// Publish sends a JSON-encoded payload to the given topic (QoS 1, non-retained).
+// It is safe to call from any goroutine. If the client is not connected the
+// message is dropped and an error is logged — no fallback, by design.
+func Publish(topic string, payload interface{}) error {
+	if mqttClient == nil {
+		logger.SystemLog("[MQTT] Publish attempted before Init()")
+		return fmt.Errorf("mqtt client not initialized")
+	}
+
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("mqtt marshal: %w", err)
+	}
+
+	token := mqttClient.Publish(topic, qos, false, data)
+	// WaitTimeout returns false on timeout, true otherwise
+	if !token.WaitTimeout(2 * time.Second) {
+		logger.SystemLog(fmt.Sprintf("[MQTT] Publish timed out: topic=%s", topic))
+		return fmt.Errorf("mqtt publish timeout: %s", topic)
+	}
+	if err := token.Error(); err != nil {
+		logger.SystemLog(fmt.Sprintf("[MQTT] Publish error: topic=%s err=%v", topic, err))
+		return err
+	}
+	return nil
+}
+
+// Subscribe registers a handler for the given topic pattern (QoS 1).
+// Used for receiving ACKs / traffic stats from the router.
+func Subscribe(topic string, handler paho.MessageHandler) {
+	if mqttClient == nil {
+		return
+	}
+	mqttClient.Subscribe(topic, qos, handler)
+}
+
+// IsConnected returns true if the client currently has an active connection.
+func IsConnected() bool {
+	return mqttClient != nil && mqttClient.IsConnected()
+}
+
+// Disconnect cleanly disconnects from the broker during graceful shutdown.
+func Disconnect() {
+	if mqttClient != nil && mqttClient.IsConnected() {
+		mqttClient.Disconnect(500) // wait up to 500 ms to flush
+		logger.SystemLog("[MQTT] Disconnected from broker.")
+	}
+}

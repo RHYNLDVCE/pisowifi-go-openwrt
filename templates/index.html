@@ -1,0 +1,1304 @@
+{% extends "base.html" %}
+
+{% block title %}REYES Starlink PisoWifi{% endblock %}
+
+{% block styles %}
+
+<style>
+    :root {
+        --primary: #4f46e5;
+        --primary-dark: #4338ca;
+        --accent: #8b5cf6;
+        --bg-color: #f1f5f9;
+        --card-bg: #ffffff;
+        --card-border: #e2e8f0;
+        --text-main: #0f172a;
+        --text-sub: #64748b;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+        --radius: 16px;
+    }
+
+    [data-theme="dark"] {
+        --bg-color: #0f172a;
+        --card-bg: #1e293b;
+        --card-border: #334155;
+        --text-main: #f8fafc;
+        --text-sub: #94a3b8;
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+    }
+
+    * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+        background-color: var(--bg-color);
+        color: var(--text-main);
+        min-height: 100vh;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        overflow-x: hidden;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    main {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+
+    .main-wrapper {
+        width: 100%;
+        max-width: 480px;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        background: var(--bg-color);
+        position: relative;
+        overflow-x: hidden;
+    }
+
+    /* --- HEADER & CAROUSEL --- */
+    .header {
+        position: relative;
+        height: 200px;
+        width: 100%;
+        overflow: hidden;
+        border-bottom-left-radius: 22px;
+        border-bottom-right-radius: 22px;
+        box-shadow: var(--shadow-lg);
+        background: #0f172a;
+        z-index: 1;
+    }
+
+    #bannerWrapper {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        width: 100%;
+        height: 100%;
+        transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+        will-change: transform;
+        box-sizing: border-box;
+    }
+
+    .carousel-slide {
+        flex: 0 0 100%;
+        width: 100%;
+        max-width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        margin: 0;
+        padding: 0;
+        border: none;
+    }
+
+    .header-content {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        padding: 30px 20px 32px;
+        background: linear-gradient(to top, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0.5) 50%, transparent 100%);
+        z-index: 10;
+        text-align: center;
+        color: white;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        pointer-events: none;
+    }
+
+    .header-content h2 {
+        margin: 0;
+        font-weight: 800;
+        font-size: var(--title-size, 27px);
+        letter-spacing: -0.5px;
+        color: var(--title-color, #fde68a);
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
+    }
+
+    .header-content p {
+        margin: 0;
+        opacity: 0.9;
+        font-size: var(--subtitle-size, 15px);
+        font-weight: 500;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(255, 255, 255, 0.15);
+        padding: 6px 14px;
+        border-radius: 99px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        margin-top: 4px;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+    }
+
+    /* --- COMPACT CARD --- */
+    .timer-card {
+        background: var(--card-bg);
+        border-radius: var(--radius);
+        border: 1px solid var(--card-border);
+        box-shadow: var(--shadow-md);
+        text-align: center;
+        position: relative;
+        z-index: 20;
+        margin: -24px 15px 0 15px !important;
+        width: calc(100% - 30px) !important;
+        height: 175px !important;
+        min-height: 175px !important;
+        max-height: 175px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
+        padding: 16px !important;
+        box-sizing: border-box !important;
+    }
+
+    .timer-display {
+        font-size: 2.1rem;
+        font-weight: 800;
+        color: var(--text-main);
+        font-variant-numeric: tabular-nums;
+        height: 52px !important;
+        width: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: clip !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+        letter-spacing: -1px;
+    }
+
+    .unit-small {
+        font-size: 0.45em;
+        margin-left: 2px;
+        margin-right: 3px;
+        color: var(--text-sub);
+        vertical-align: baseline;
+        text-transform: uppercase;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+    }
+
+    .timer-label {
+        color: var(--text-sub);
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-top: 0px;
+    }
+
+    .conn-status {
+        font-size: 0.9rem;
+        color: var(--text-sub);
+        font-weight: 600;
+        height: 20px;
+        margin-bottom: 0;
+    }
+
+    .info-section {
+        margin-top: auto;
+        padding-top: 8px;
+        border-top: 1px dashed var(--card-border);
+    }
+
+    .info-row {
+        display: flex;
+        justify-content: center;
+        gap: 16px;
+        font-size: 0.75rem;
+        color: var(--text-sub);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        margin-bottom: 4px;
+        flex-wrap: wrap;
+    }
+
+    .info-row b {
+        color: var(--text-main);
+        font-weight: 700;
+    }
+
+    .ip-mac-text {
+        font-size: 0.7rem;
+    }
+
+    /* COMPACT ACTIONS */
+    .actions {
+        padding: 12px 15px 20px 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        flex-grow: 1;
+        width: 100%;
+    }
+
+    .btn {
+        border: none;
+        width: 100%;
+        max-width: 100%;
+        padding: 14px;
+        border-radius: 12px;
+        font-size: 1.05rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        box-shadow: var(--shadow-md);
+    }
+
+    .btn:active:not(:disabled) {
+        transform: scale(0.97);
+    }
+
+    .btn-main {
+        background: var(--text-main);
+        color: var(--card-bg);
+    }
+
+    .btn-insert {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+
+    .btn-resume {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+    }
+
+    .btn-pause {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+    }
+
+    .btn-outline {
+        background: transparent;
+        border: 2px solid var(--card-border);
+        color: var(--text-main);
+        box-shadow: none;
+        font-size: 0.95rem;
+    }
+
+    .btn-outline:hover {
+        background: var(--card-border);
+    }
+
+    .btn-disabled {
+        background: var(--card-border);
+        color: var(--text-sub);
+        cursor: not-allowed;
+        box-shadow: none;
+    }
+
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(15, 23, 42, 0.85);
+        z-index: 1000;
+        display: none;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .viewer-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        z-index: 9999;
+        display: none;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .modal-card {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        color: var(--text-main);
+        width: 90%;
+        max-width: 340px;
+        border-radius: var(--radius);
+        padding: 32px 24px;
+        text-align: center;
+        box-shadow: var(--shadow-lg);
+        animation: scaleUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes scaleUp {
+        from {
+            transform: scale(0.95);
+            opacity: 0;
+        }
+        to {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+
+    .pulse-animation {
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+
+    .coin-circle {
+        width: 72px;
+        height: 72px;
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        border-radius: 50%;
+        margin: 0 auto 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5rem;
+        color: #d97706;
+        border: 4px solid var(--card-bg);
+        box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3);
+    }
+
+    .progress-track {
+        width: 100%;
+        height: 8px;
+        background: var(--card-border);
+        border-radius: 4px;
+        overflow: hidden;
+        margin: 24px 0;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: var(--primary);
+        width: 100%;
+        transition: width 1s linear;
+    }
+
+    .stats-box {
+        background: var(--bg-color);
+        border-radius: 12px;
+        padding: 0;
+        margin-bottom: 24px;
+        border: 1px solid var(--card-border);
+        text-align: left;
+        overflow: hidden;
+    }
+
+    .stat-row {
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--text-main);
+        font-size: 1.05rem;
+    }
+
+    .stat-row.border-bottom {
+        border-bottom: 1px solid var(--card-border);
+    }
+
+    .stat-label {
+        color: var(--text-sub);
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+
+    .stat-value {
+        font-weight: 800;
+        margin-left: auto;
+    }
+
+    .toast-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        pointer-events: none;
+    }
+
+    .toast {
+        background: var(--text-main);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        animation: toastSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        min-width: 200px;
+        justify-content: flex-start;
+        text-align: left;
+    }
+
+    .toast.error {
+        background: var(--danger);
+    }
+
+    .toast.success {
+        background: var(--success);
+    }
+
+    @keyframes toastSlideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* --- THEME TOGGLE BUTTON --- */
+    .theme-toggle-btn {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        border: 1px solid var(--card-border);
+        box-shadow: var(--shadow-md);
+        cursor: pointer;
+        z-index: 5000;
+        transition: transform 0.2s, background-color 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .theme-toggle-btn:active {
+        transform: scale(0.9);
+    }
+
+    [data-theme="light"] .theme-toggle-btn {
+        background-color: var(--card-bg);
+        color: var(--text-main);
+    }
+
+    [data-theme="dark"] .theme-toggle-btn {
+        background-color: var(--card-bg);
+        color: var(--warning);
+    }
+
+    [data-theme="light"] .icon-sun { display: none; }
+    [data-theme="light"] .icon-moon { display: block; }
+    [data-theme="dark"] .icon-moon { display: none; }
+    [data-theme="dark"] .icon-sun { display: block; }
+
+    .theme-toggle-icon {
+        width: 20px;
+        height: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="main-wrapper">
+    <div id="appHeader" class="header">
+
+        <div id="bannerWrapper">
+            {% for banner in banners %}
+            <img src="{{ banner }}" class="carousel-slide" onclick="openImageViewer('{{ banner }}')" style="cursor: pointer;">
+            {% endfor %}
+        </div>
+
+        <div class="header-content" style="--title-size: {{ portal_title_size }}px; --title-color: {{ portal_title_color }}; --subtitle-size: {{ portal_subtitle_size }}px;">
+            <h2>{{ portal_title }}</h2>
+            <p>{{ portal_subtitle }}</p>
+
+            <div id="statusBadgeContainer" class="status-badge">
+                <span class="dot"></span> <span id="statusBadge">CONNECTING...</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="timer-card">
+        <div class="timer-label">Time Remaining</div>
+        <div id="timeDisplay" class="timer-display">--:--</div>
+        <div id="connectionStatus" class="conn-status">Checking Status...</div>
+
+        <div class="info-section">
+            <div class="info-row">
+                <span>Coin Balance: <b id="balanceDisplay">0</b></span>
+                {% if points_enabled %}
+                <span id="pointsContainer" style="color: #f59e0b; margin-left: 10px;">
+                    ⭐ <b id="pointsDisplay">{{ points }}</b> Pts
+                </span>
+                {% endif %}
+            </div>
+            <div class="info-row ip-mac-text">
+                <span>IP: <b id="ipDisplay">...</b></span>
+                <span>MAC: <b id="macDisplay">...</b></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="actions">
+        <button id="btnInsert" class="btn btn-insert" onclick="activateSlot()">
+            Insert Coin
+        </button>
+
+        <button id="btnAction" class="btn btn-disabled" disabled onclick="connectInternet()">
+            RESUME TIME
+        </button>
+
+        <button class="btn btn-outline" onclick="openRatesModal()">
+            View Rates
+        </button>
+
+        {% if free_time_enabled and not free_claimed %}
+        <button id="btnFree" class="btn" style="background: #8b5cf6; color: white; margin-top: 5px;"
+            onclick="claimFreeTime()">
+            {% if free_duration >= 60 %}
+            Claim Free {{ free_time_formatted }} Hours
+            {% else %}
+            Claim Free {{ free_duration }} Mins
+            {% endif %}
+        </button>
+        {% endif %}
+
+        {% if points_enabled and voucher_enabled %}
+        <button id="btnRewards" class="btn"
+            style="background: #0b61f5; color: white; margin-top: 5px; box-shadow: 0 4px 15px rgba(11, 97, 245, 0.3);"
+            onclick="window.location.href='/rewards'">
+            Points & Voucher
+        </button>
+        {% elif points_enabled %}
+        <button id="btnRewards" class="btn"
+            style="background: #0b61f5; color: white; margin-top: 5px; box-shadow: 0 4px 15px rgba(11, 97, 245, 0.3);"
+            onclick="window.location.href='/rewards'">
+            Loyalty Points
+        </button>
+        {% elif voucher_enabled %}
+        <button id="btnRewards" class="btn"
+            style="background: #0b61f5; color: white; margin-top: 5px; box-shadow: 0 4px 15px rgba(11, 97, 245, 0.3);"
+            onclick="window.location.href='/rewards'">
+            Voucher
+        </button>
+        {% endif %}
+
+        {% if banner_text %}
+        <div style="text-align: center; margin-top: 15px;">
+            <a href="{{ banner_link }}" target="_blank"
+                style="color: var(--text-sub); text-decoration: none; font-size: 0.95rem; font-weight: 500; border-bottom: 1px dotted var(--text-sub);">
+                {{ banner_text }}
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div id="coinModal" class="modal-overlay">
+    <div class="modal-card">
+        <h3 style="margin: 0 0 5px;">Insert Coins Now</h3>
+        <p style="margin: 0; color: var(--text-sub); font-size: 0.9rem;">Slot closes in <b id="slotSeconds"
+                style="color:var(--primary);">--</b>s</p>
+
+        <div class="progress-track">
+            <div id="slotProgressBar" class="progress-fill"></div>
+        </div>
+
+        <div class="stats-box">
+            <div class="stat-row border-bottom">
+                <span class="stat-label">Time:</span>
+                <span id="modalTimeVal" class="stat-value">0s</span>
+            </div>
+            <div class="stat-row border-bottom">
+                <span class="stat-label">Total Amount:</span>
+                <span id="modalAmountVal" class="stat-value">00</span>
+            </div>
+
+            {% if points_enabled %}
+            <div class="stat-row">
+                <span class="stat-label">Points Earned:</span>
+                <span id="modalPointsVal" class="stat-value" style="color: #f59e0b;">0</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <button id="btnModalAction" class="btn btn-danger" onclick="handleModalAction()">CANCEL</button>
+    </div>
+</div>
+
+<div id="ratesModal" class="modal-overlay">
+    <div class="modal-card">
+        <h3 style="margin-bottom: 20px;">Rates</h3>
+        <div id="ratesList" class="stats-box" style="padding: 0; overflow: hidden;">
+        </div>
+        <button class="btn btn-main" onclick="document.getElementById('ratesModal').style.display='none'">Close</button>
+    </div>
+</div>
+
+<div id="confirmModal" class="modal-overlay">
+    <div class="modal-card">
+        <h3 style="margin: 0 0 10px;">Claim Free Time?</h3>
+        <p style="margin-bottom: 25px; color: var(--text-sub); font-size: 0.9rem;">
+            You are about to activate your free trial. <br>Do you want to proceed?
+        </p>
+        <div style="display:flex; gap:10px;">
+            <button class="btn btn-outline" style="flex:1;" onclick="closeConfirmModal()">Cancel</button>
+            <button class="btn btn-main" style="flex:1;" onclick="proceedClaim()">Yes, Claim</button>
+        </div>
+    </div>
+</div>
+
+<div id="successModal" class="modal-overlay">
+    <div class="modal-card">
+        <h3 style="margin: 0 0 10px;">Congratulations!</h3>
+        <p style="margin-bottom: 25px; color: var(--text-sub);">
+            You have successfully claimed your free time.
+        </p>
+        <button class="btn btn-main" onclick="closeSuccessModal()">Start Browsing</button>
+    </div>
+</div>
+
+<div id="imageViewerModal" class="viewer-overlay" onclick="closeImageViewer()">
+    <img id="viewerImage" src="" style="max-width: 95%; max-height: 95%; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);" onclick="event.stopPropagation()">
+</div>
+
+<div id="toastContainer" class="toast-container"></div>
+
+<button id="themeToggle" class="theme-toggle-btn" aria-label="Toggle Dark Mode">
+    <svg class="theme-toggle-icon icon-moon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+    </svg>
+    <svg class="theme-toggle-icon icon-sun" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+    </svg>
+</button>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize theme engine
+    const rootElement = document.documentElement;
+    
+    // Check cache for user preference, default to light
+    const savedTheme = localStorage.getItem('piso_theme') || 'light';
+    rootElement.setAttribute('data-theme', savedTheme);
+
+    // Apply event listener on load
+    document.addEventListener('DOMContentLoaded', () => {
+        const themeBtn = document.getElementById('themeToggle');
+        if (themeBtn) {
+            themeBtn.addEventListener('click', () => {
+                const currentTheme = rootElement.getAttribute('data-theme');
+                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                rootElement.setAttribute('data-theme', newTheme);
+                localStorage.setItem('piso_theme', newTheme);
+            });
+        }
+    });
+
+    var mac = "{{ mac }}";
+    var ratesStr = "{{ coin_rates }}";
+    var pointMap = JSON.parse('{{ coin_point_map_json | safe }}');
+    var pointsEnabled = "{{ points_enabled_json }}";
+
+    // --- UI SETUP ---
+    var badChar = String.fromCharCode(123);
+    
+    // Apply asterisk fallback for nodes missing a hostname
+    if (!mac || mac.startsWith("None") || mac.startsWith(badChar)) mac = "*";
+    
+    document.getElementById("macDisplay").innerText = mac;
+    document.getElementById("ipDisplay").innerText = "{{ ip }}";
+
+    var audioInsert = new Audio("{{ sound_insert_url }}");
+    audioInsert.loop = true;
+    var audioCoin = new Audio("{{ sound_coin_url }}");
+
+    // --- CAROUSEL LOGIC (SWIPE) ---
+    const slides = document.querySelectorAll('.carousel-slide');
+    const wrapper = document.getElementById('bannerWrapper');
+    let currentSlide = 0;
+
+    // Only activate animation if more than 1 image
+    if (slides.length > 1) {
+        setInterval(() => {
+            currentSlide++;
+
+            // Loop back to start
+            if (currentSlide >= slides.length) {
+                currentSlide = 0;
+            }
+
+            // Move the film strip
+            if (wrapper) {
+                wrapper.style.transform = `translateX(-${currentSlide * 100}%)`;
+            }
+        }, 4000);
+    }
+
+    // --- STATE ---
+    let isModalOpen = false;
+    let sessionAddedTime = 0;
+    let localTime = 0;
+    let slotTime = 0;
+    let slotMaxTime = 30;
+    let currentStatus = "loading";
+    let ws = null;
+    let fastPollTimer = null;
+
+    // --- RESTORE FROM CACHE ---
+    const cachedTime = localStorage.getItem("piso_time_" + mac);
+    const cachedStatus = localStorage.getItem("piso_status_" + mac);
+
+    if (cachedTime && !isNaN(parseInt(cachedTime))) {
+        localTime = parseInt(cachedTime);
+        updateTimerDisplay(localTime);
+    }
+    if (cachedStatus) {
+        currentStatus = cachedStatus;
+        updateUI({ status: cachedStatus, time_remaining: localTime, is_busy: false, balance: 0 });
+    }
+
+    // --- WEBSOCKET ---
+    function connectWebSocket() {
+        if (mac === "*" || mac === "Unknown") return;
+        var protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
+        ws = new WebSocket(protocol + window.location.host + "/ws/" + mac);
+
+        ws.onopen = () => { console.log("WS Connected"); fetchStatus(); };
+        ws.onmessage = (event) => {
+            var data = JSON.parse(event.data);
+            if (data.type === "sync") {
+                localTime = data.time_remaining;
+                updateTimerDisplay(localTime);  // Immediately snap display to backend's authoritative time
+                updateUI(data);
+            } else if (data.type === "slot_opened") {
+                localTime = data.time_remaining;
+                handleSlotLogic(data);
+                audioInsert.play().catch(e => console.log("Auto-play blocked:", e));
+            } else if (data.type === "coin_counting") {
+                const btn = document.getElementById("btnModalAction");
+                window.isCountingCoins = (data.is_counting === true);
+                
+                if (data.is_counting === true) {
+                    // Coin is dropping, lock the button
+                    btn.disabled = true;
+                    btn.innerHTML = `<span class="pulse-animation">Processing...</span>`;
+                    btn.className = "btn btn-disabled";
+                    btn.style.background = "#6b7280";
+                    btn.style.color = "white";
+                } else {
+                    // Counting is finished
+                    if (sessionAddedTime > 0) {
+                        // Money in the slot
+                        btn.disabled = false;
+                        btn.innerText = "DONE & RESUME";
+                        btn.className = "btn btn-resume pulse-animation";
+                        btn.style.background = "";
+                        btn.style.color = "";
+                    } else {
+                        // No money inserted yet
+                        btn.disabled = false;
+                        btn.innerText = "CANCEL";
+                        btn.className = "btn btn-danger";
+                        btn.style.background = "var(--danger)";
+                        btn.style.color = "white";
+                    }
+                }
+            } else if (data.type === "coin_inserted") {
+                localTime = data.time_remaining;
+                handleSlotLogic(data);
+                audioCoin.currentTime = 0;
+                audioCoin.play().catch(e => console.log("Audio Error:", e));
+
+            } else if (data.type === "slot_closed") {
+                if (isModalOpen) closeModal(false);
+            }
+        };
+        ws.onclose = () => { setTimeout(connectWebSocket, 500); };
+    }
+
+    async function fetchStatus() {
+        try {
+            // Append current time to create a unique URL, bypassing cache
+            let res = await fetch(`/status?mac=${mac}&_t=${Date.now()}`);
+            let data = await res.json();
+            localTime = data.time_remaining;
+
+            if (data.slot_seconds > 0 && !isModalOpen) {
+                handleSlotLogic(data);
+            }
+            updateUI(data);
+            if (data.points_enabled !== undefined) pointsEnabled = data.points_enabled;
+            if (data.coin_point_map) pointMap = data.coin_point_map;
+            if (data.slot_seconds > 0) handleSlotLogic(data);
+        } catch (e) { }
+    }
+
+    // --- TIMER LOOP ---
+    setInterval(() => {
+        if (currentStatus === "connected" && localTime > 0) {
+            localTime--;
+            updateTimerDisplay(localTime);
+            if (localTime % 5 === 0) localStorage.setItem("piso_time_" + mac, localTime);
+        } else if (currentStatus !== "connected") {
+            updateTimerDisplay(localTime);
+        } else {
+            updateTimerDisplay(0);
+        }
+
+        if (isModalOpen && slotTime > 0) {
+            slotTime--;
+            document.getElementById("slotSeconds").innerText = slotTime;
+            const percentage = (slotTime / slotMaxTime) * 100;
+            document.getElementById("slotProgressBar").style.width = percentage + "%";
+        }
+    }, 1000);
+
+    function showToast(message, type = 'info') {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = message;
+        container.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+
+    function handleModalAction() {
+        if (sessionAddedTime > 0) connectInternet();
+        closeModal(true);
+    }
+
+    function closeModal(shouldTellServer) {
+        if (shouldTellServer) fetch(`/cancel_slot?mac=${mac}`, { method: "POST" });
+        document.getElementById("coinModal").style.display = "none";
+        isModalOpen = false;
+        sessionAddedTime = 0;
+        audioInsert.pause();
+        audioInsert.currentTime = 0;
+
+        if (fastPollTimer) {
+            clearInterval(fastPollTimer);
+            fastPollTimer = null;
+        }
+        const btn = document.getElementById("btnInsert");
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = "Insert Coin";
+        }
+    }
+
+    function handleSlotLogic(data) {
+        if (!isModalOpen) {
+            isModalOpen = true;
+            document.getElementById("coinModal").style.display = "flex";
+        }
+        slotTime = data.slot_seconds;
+        if (data.coin_rates) ratesStr = data.coin_rates;
+        if (data.slot_max_seconds) slotMaxTime = data.slot_max_seconds;
+        else if (data.type === "slot_opened") slotMaxTime = data.slot_seconds;
+
+        document.getElementById("slotSeconds").innerText = slotTime;
+        const percentage = (slotTime / slotMaxTime) * 100;
+        document.getElementById("slotProgressBar").style.width = percentage + "%";
+
+        let currentBalance = data.balance || 0;
+        sessionAddedTime = calculateTimeFromBalance(currentBalance);
+
+        document.getElementById("modalTimeVal").innerHTML = formatHumanTime(sessionAddedTime * 60, true).htmlText;
+        document.getElementById("modalAmountVal").innerText = parseFloat(currentBalance).toFixed(2);
+
+        if (pointsEnabled) {
+            let pendingPoints = calculatePointsFromBalance(currentBalance);
+            let el = document.getElementById("modalPointsVal");
+            if (el) el.innerText = +pendingPoints.toFixed(2);
+        }
+
+        const btn = document.getElementById("btnModalAction");
+        if (window.isCountingCoins) return;
+
+        if (sessionAddedTime > 0) {
+            btn.innerText = "DONE & RESUME";
+            btn.className = "btn btn-resume pulse-animation";
+            btn.disabled = false;
+            btn.style.background = "";
+            btn.style.color = "";
+        } else {
+            btn.innerText = "CANCEL";
+            btn.className = "btn btn-disabled";
+            btn.disabled = false;
+            btn.style.background = "var(--danger)";
+            btn.style.color = "white";
+        }
+    }
+
+    function calculateTimeFromBalance(balance) {
+        let rates = [];
+        try {
+            ratesStr.split(',').forEach(part => {
+                let [amt, mins] = part.split(':');
+                rates.push({ amt: parseInt(amt), mins: parseInt(mins) });
+            });
+            rates.sort((a, b) => b.amt - a.amt);
+        } catch (e) { rates = [{ amt: 1, mins: 5 }]; }
+
+        let totalMins = 0;
+        let rem = parseInt(balance);
+        rates.forEach(r => {
+            if (r.amt > 0) {
+                let count = Math.floor(rem / r.amt);
+                if (count > 0) {
+                    totalMins += count * r.mins;
+                    rem = rem % r.amt;
+                }
+            }
+        });
+        if (rem > 0) totalMins += rem * 5;
+        return totalMins;
+    }
+
+    function calculatePointsFromBalance(balance) {
+        let rem = parseInt(balance);
+        let totalPts = 0;
+        let rates = [];
+        for (let k in pointMap) {
+            rates.push({ amt: parseFloat(k), val: parseFloat(pointMap[k]) });
+        }
+        rates.sort((a, b) => b.amt - a.amt);
+        rates.forEach(r => {
+            if (r.amt > 0) {
+                let count = Math.floor(rem / r.amt);
+                if (count > 0) {
+                    totalPts += count * r.val;
+                    rem = rem % r.amt;
+                }
+            }
+        });
+        return totalPts;
+    }
+
+    function openRatesModal() {
+        let container = document.getElementById("ratesList");
+        container.innerHTML = "";
+
+        const gridLayout = "grid-template-columns: 1fr 1fr 1.5fr;";
+
+        let header = document.createElement("div");
+        header.className = "stat-row border-bottom";
+        header.style.padding = "10px 15px";
+        header.style.background = "var(--bg-color)"; 
+        header.style.fontSize = "0.75rem";
+        header.style.fontWeight = "700";
+        header.style.color = "var(--text-sub)"; 
+        header.style.textTransform = "uppercase";
+        header.style.letterSpacing = "1px";
+
+        header.innerHTML = `
+            <div style="display:grid; ${gridLayout} align-items:center; width:100%;">
+                <span style="text-align: left;">Price</span>
+                <div style="text-align: center;">Bonus</div>
+                <span style="text-align: right;">Duration</span>
+            </div>
+        `;
+        container.appendChild(header);
+
+        let rates = [];
+        try {
+            ratesStr.split(',').forEach(part => {
+                let [amt, mins] = part.split(':');
+                rates.push({ amt: parseInt(amt), mins: parseInt(mins) });
+            });
+            rates.sort((a, b) => a.amt - b.amt);
+        } catch (e) { }
+
+        rates.forEach(r => {
+            let row = document.createElement("div");
+            row.className = "stat-row border-bottom";
+            row.style.fontSize = "0.95rem";
+            row.style.padding = "12px 15px";
+
+            let pointsHtml = '<span style="color:#cbd5e1; font-weight:400;">-</span>';
+            if (pointsEnabled && pointMap) {
+                let pts = pointMap[r.amt.toString()] || 0;
+                if (pts > 0) {
+                    pointsHtml = `<span style="background:#fff7ed; color:#d97706; padding:2px 8px; border-radius:10px; font-weight:700; font-size:0.8rem; border:1px solid #ffedd5;">+${pts} Pts</span>`;
+                }
+            }
+
+            let timeObj = formatHumanTime(r.mins * 60);
+            let timeHtml = timeObj.htmlText;
+            if (timeHtml.includes("0<span class=\"unit-small\">SEC.</span>")) {
+                timeHtml = timeHtml.replace(" 0<span class=\"unit-small\">SEC.</span>", "");
+            }
+
+            row.innerHTML = `
+                <div style="display:grid; ${gridLayout} align-items:center; width:100%;">
+                    <span style="font-weight:800; font-size:1.1rem; color:var(--text-main);">₱${r.amt}</span>
+                    <div style="text-align: center;">${pointsHtml}</div>
+                    <span class="stat-value" style="font-weight:600; color:var(--text-sub); text-align: right;">${timeHtml}</span>
+                </div>
+            `;
+            container.appendChild(row);
+        });
+        document.getElementById("ratesModal").style.display = "flex";
+    }
+
+    function activateSlot() {
+        const btn = document.getElementById("btnInsert");
+        btn.disabled = true;
+        btn.innerText = "Please Wait...";
+        
+        // Explicitly define the POST method to bypass Android/iOS captive portal cache
+        fetch(`/enable_slot?mac=${mac}`, { method: 'POST' }).then(r => r.json()).then(d => {
+            if (d.result === "success") {
+                fetchStatus();
+                if (fastPollTimer) clearInterval(fastPollTimer);
+                fastPollTimer = setInterval(fetchStatus, 1000);
+            } else if (d.result === "blocked") {
+                showToast("Access Denied: You are BLOCKED. Contact Owner.", "error");
+                btn.disabled = false;
+                btn.innerText = "Insert Coin";
+            } else if (d.result === "busy") {
+                showToast("System Busy - Someone is inserting coins", "error");
+                btn.disabled = false;
+                btn.innerText = "Insert Coin";
+            } else {
+                // Catch routing or server errors instead of defaulting to a busy state
+                showToast("Server Error: Check API connection.", "error");
+                btn.disabled = false;
+                btn.innerText = "Insert Coin";
+            }
+        }).catch(err => {
+            showToast("Network Error: Could not activate slot", "error");
+            btn.disabled = false;
+            btn.innerText = "Insert Coin";
+        });
+    }
+
+    function connectInternet() {
+        currentStatus = "connected";
+        updateUI({ status: "connected", time_remaining: localTime, is_busy: false, balance: 0 });
+        document.getElementById("statusBadge").innerText = "OPENING PORTAL...";
+        document.getElementById("btnAction").innerText = "Resuming...";
+        fetch(`/connect?mac=${mac}`, { method: 'POST' }).then(r => r.json()).then(d => {
+            if (d.result === "success") {
+                document.getElementById("connectionStatus").innerText = "Connection Established!";
+                showToast("Connected! Validating...", "success");
+                setTimeout(() => { window.location.reload(); }, 1500);
+            } else if (d.result === "blocked") {
+                updateUI({ status: "paused", time_remaining: localTime, is_busy: false, balance: 0 });
+                showToast("Access Denied: You are BLOCKED. Contact Owner.", "error");
+            } else {
+                updateUI({ status: "paused", time_remaining: localTime, is_busy: false, balance: 0 });
+                showToast("Connection Failed. Try again.", "error");
+            }
+        }).catch(err => {
+            updateUI({ status: "paused", time_remaining: localTime, is_busy: false, balance: 0 });
+            showToast("Network Error: Try refreshing manually.", "error");
+        });
+    }
+
+    function pauseInternet() {
+        currentStatus = "paused";
+        updateUI({ status: "paused", time_remaining: localTime, is_busy: false, balance: 0 });
+        fetch(`/pause?mac=${mac}`, { method: 'POST' }).then(r => r.json());
+    }
+
+    function claimFreeTime() { document.getElementById('confirmModal').style.display = 'flex'; }
+    function closeConfirmModal() { document.getElementById('confirmModal').style.display = 'none'; }
+    function closeSuccessModal() { document.getElementById('successModal').style.display = 'none'; window.location.reload(); }
+
+    function openImageViewer(src) {
+        document.getElementById('viewerImage').src = src;
+        document.getElementById('imageViewerModal').style.display = 'flex';
+    }
+
+    function closeImageViewer() {
+        document.getElementById('imageViewerModal').style.display = 'none';
+        document.getElementById('viewerImage').src = '';
+    }
+
+    function proceedClaim() {
+        closeConfirmModal();
+        const btn = document.getElementById("btnFree");
+        if (btn) { btn.disabled = true; btn.innerText = "Claiming..."; }
+        fetch(`/claim_free_time?mac=${mac}`, { method: 'POST' }).then(r => r.json()).then(d => {
+            if (d.result === "success") {
+                document.getElementById('successModal').style.display = 'flex';
+                if (btn) btn.style.display = 'none';
+            } else if (d.result === "already_claimed") {
+                showToast("You have already claimed this offer.", "error");
+                if (btn) btn.style.display = 'none';
+            } else if (d.result === "disabled") {
+                showToast("Free trial is currently disabled.", "error");
+            } else {
+                showToast("Offer is currently unavailable.", "error");
+                if (btn) { btn.disabled = false; btn.innerText = "🎁 Claim Free Time"; }
+            }
+        });
+    }
+
+    function updateUI(data) {
+        currentStatus = data.status;
+        localStorage.setItem("piso_time_" + mac, data.time_remaining);
+        localStorage.setItem("piso_status_" + mac, data.status);
+        if (data.coin_rates) ratesStr = data.coin_rates;
+
+        let bal = data.balance !== undefined ? data.balance : 0;
+        document.getElementById("balanceDisplay").innerText = bal;
+        if (data.points !== undefined) {
+            let el = document.getElementById("pointsDisplay");
+            if (el) el.innerText = data.points;
+        }
+
+        const btnInsert = document.getElementById("btnInsert");
+        const btnAction = document.getElementById("btnAction");
+        const statusBadge = document.getElementById("statusBadge");
+        const badgeContainer = document.getElementById("statusBadgeContainer");
+        const connStatus = document.getElementById("connectionStatus");
+
+        btnInsert.innerHTML = "Insert Coin";
+        btnInsert.className = "btn btn-insert";
+        btnInsert.disabled = false;
+
+        if (data.status === "connected") {
+            statusBadge.innerText = "ONLINE";
+            badgeContainer.style.background = "rgba(16, 185, 129, 0.2)";
+            connStatus.innerText = "Internet Active";
+            connStatus.style.color = "var(--success)";
+            btnAction.innerText = "PAUSE TIME";
+            btnAction.className = "btn btn-pause";
+            btnAction.disabled = false;
+            btnAction.onclick = pauseInternet;
+        } else if (data.status === "paused" || (data.time_remaining > 0 || localTime > 0)) {
+            statusBadge.innerText = "PAUSED";
+            badgeContainer.style.background = "rgba(245, 158, 11, 0.2)";
+            connStatus.innerText = "Time Paused";
+            connStatus.style.color = "var(--warning)";
+            btnAction.innerText = "RESUME TIME";
+            btnAction.className = "btn btn-resume";
+            btnAction.disabled = false;
+            btnAction.onclick = connectInternet;
+        } else if (data.is_busy && !isModalOpen) {
+            statusBadge.innerText = "BUSY";
+            badgeContainer.style.background = "rgba(239, 68, 68, 0.2)";
+            btnAction.innerText = "System Busy";
+            btnAction.className = "btn btn-disabled";
+            btnAction.disabled = true;
+            btnInsert.className = "btn btn-disabled";
+            btnInsert.disabled = true;
+        } else {
+            statusBadge.innerText = "DISCONNECTED";
+            badgeContainer.style.background = "rgba(255, 255, 255, 0.2)";
+            connStatus.innerText = "No Time Available";
+            connStatus.style.color = "var(--text-sub)";
+            btnAction.innerText = "RESUME TIME";
+            btnAction.className = "btn btn-disabled";
+            btnAction.disabled = true;
+        }
+    }
+
+    function updateTimerDisplay(seconds) {
+        const display = document.getElementById("timeDisplay");
+        const { htmlText, length } = formatHumanTime(seconds);
+
+        display.innerHTML = htmlText;
+        if (length <= 7) {
+            display.style.fontSize = "2rem";       
+        } else if (length <= 10) {
+            display.style.fontSize = "2rem";     
+        } else if (length <= 15) {
+            display.style.fontSize = "1.8rem";     
+        } else if (length <= 22) {
+            display.style.fontSize = "1.8rem";    
+        } else if (length <= 26) {
+            display.style.fontSize = "1.6rem";     
+        } else if (length <= 30) {
+            display.style.fontSize = "1.4rem";     
+        } else {
+            display.style.fontSize = "1.2rem";    
+        }
+    }
+
+    function formatHumanTime(seconds, hideZeroSeconds = false) {
+        if (!Number.isFinite(seconds) || seconds <= 0) {
+            return { plainText: "--", htmlText: "--", length: 2 };
+        }
+
+        const YEAR = 31104000;
+        const MONTH = 2592000;
+        const DAY = 86400;
+        const HOUR = 3600;
+        const MIN = 60;
+
+        const y = Math.floor(seconds / YEAR);
+        const mo = Math.floor((seconds % YEAR) / MONTH);
+        const d = Math.floor((seconds % MONTH) / DAY);
+        const h = Math.floor((seconds % DAY) / HOUR);
+        const m = Math.floor((seconds % HOUR) / MIN);
+        const s = seconds % MIN;
+
+        const partsText = []; const partsHtml = [];
+        const unit = (label) => `<span class="unit-small">${label}</span>`;
+
+        if (y > 0) { partsText.push(`${y}YR.`); partsHtml.push(`${y}${unit("YR.")}`); }
+        if (mo > 0) { partsText.push(`${mo}MO.`); partsHtml.push(`${mo}${unit("MO.")}`); }
+        if (d > 0) { partsText.push(`${d}D.`); partsHtml.push(`${d}${unit("D.")}`); }
+        if (h > 0) { partsText.push(`${h}HR.`); partsHtml.push(`${h}${unit("HR.")}`); }
+
+        if (m > 0 || y > 0 || mo > 0 || d > 0 || h > 0) {
+            partsText.push(`${m}MIN.`); partsHtml.push(`${m}${unit("MIN.")}`);
+        }
+
+        if (!hideZeroSeconds || s > 0) {
+            partsText.push(`${s}SEC.`);
+            partsHtml.push(`<span style="color: #f59e0b;">${s}</span><span class="unit-small" style="color: #f59e0b;">SEC.</span>`);
+        }
+
+        const plainText = partsText.join(" ");
+        const htmlText = `<span style="display:inline-block;">${partsHtml.join("")}</span>`;
+
+        return { plainText, htmlText, length: plainText.length };
+    }
+
+    connectWebSocket();
+</script>
+{% endblock %}

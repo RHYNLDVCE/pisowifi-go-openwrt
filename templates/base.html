@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}PisoWifi{% endblock %}</title>
+    
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+        }
+
+        /* Only disable text selection if NOT on admin pages */
+        body:not(.admin-page) {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+    </style>
+
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('admin_theme');
+            const isDark = savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            if (isDark && window.location.pathname.startsWith('/admin')) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
+    {% block styles %}{% endblock %}
+</head>
+<body class="{% if request.url.path.startswith('/admin') %}admin-page{% endif %}">
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    {% block scripts %}{% endblock %}
+
+    <script>
+        (function() {
+            // Check if current path is admin
+            const isAdmin = window.location.pathname.startsWith('/admin');
+
+            if (!isAdmin) {
+                // 1. Disable Right Click for Public Portal
+                document.addEventListener('contextmenu', function(e) {
+                    e.preventDefault();
+                });
+
+                // 2. Disable Keyboard Shortcuts (F12, Inspect, View Source)
+                document.addEventListener('keydown', function(e) {
+                    // F12
+                    if (e.key === 'F12') {
+                        e.preventDefault();
+                    }
+                    // Ctrl+Shift+I, J, C (Developer Tools)
+                    if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) {
+                        e.preventDefault();
+                    }
+                    // Ctrl+U (View Source)
+                    if (e.ctrlKey && e.key === 'u' || e.key === 'U') {
+                        e.preventDefault();
+                    }
+                });
+
+                // 3. Disable Image Dragging
+                document.addEventListener('dragstart', function(e) {
+                    e.preventDefault();
+                });
+            } else {
+                // If Admin, ensure right-click is explicitly allowed
+                document.oncontextmenu = function() { return true; };
+            }
+        })();
+    </script>
+
+</body>
+</html>     
