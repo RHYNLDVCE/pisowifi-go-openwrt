@@ -192,6 +192,9 @@ table ip pisowifi {
     chain prerouting {
         type filter hook prerouting priority mangle; policy accept;
         ${UDP_PRIO_RULES}
+        
+        # Count upload traffic for auto-pause monitor
+        iifname "${LAN}" ether saddr @authorized_users
     }
 
     chain forward_mangle {
@@ -202,6 +205,9 @@ table ip pisowifi {
     chain postrouting_mangle {
         type filter hook postrouting priority mangle; policy accept;
         ${TTL_RULE}
+        
+        # Count download traffic for auto-pause monitor
+        oifname "${LAN}" ether daddr @authorized_users
     }
 
     chain filter_input {
@@ -320,9 +326,9 @@ auto_pause_monitor() {
         pkts_limit = 0
         while ((getline < "/tmp/pisowifi_auto_pause.conf") > 0) {
             if ($1 == "enabled") enabled = $2
-            if ($1 == "timeout") timeout = $2
-            if ($1 == "bytes") bytes_limit = $2
-            if ($1 == "pkts") pkts_limit = $2
+            if ($1 == "timeout") timeout = $2 + 0
+            if ($1 == "bytes") bytes_limit = $2 + 0
+            if ($1 == "pkts") pkts_limit = $2 + 0
         }
         close("/tmp/pisowifi_auto_pause.conf")
 
@@ -476,6 +482,38 @@ mosquitto_sub \
             elif [ "$status" = "online" ]; then
                 logger -t pisowifi "[FAILSAFE] Orange Pi is back online."
             fi
+            ;;
+
+        # ----------------------------------------------------------------
+        # pisowifi/router/stats/request
+        # ----------------------------------------------------------------
+        "pisowifi/router/stats/request")
+            # Run in subshell so we don't block the MQTT loop
+            (
+                # Uptime
+                read -r uptime_sec _ < /proc/uptime
+                uptime_sec=${uptime_sec%.*}
+
+                # Memory
+                mem_total=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
+                mem_avail=$(awk '/MemAvailable/ {print $2}' /proc/meminfo)
+
+                # CPU Load (1 min average)
+                read -r load1 _ < /proc/loadavg
+
+                # Interfaces (find the active WAN and LAN)
+                # LAN is usually br-lan, WAN might be eth0 or wan
+                LAN_IF=$(nft list tables | grep -q pisowifi && nft list chain ip pisowifi filter_forward 2>/dev/null | grep iifname | head -1 | awk '{print $2}' | tr -d '"' || echo "br-lan")
+                WAN_IF=$(ip route | awk '/default/ {print $5}')
+                
+                wan_rx=$(grep "${WAN_IF}:" /proc/net/dev | awk '{print $2}')
+                wan_tx=$(grep "${WAN_IF}:" /proc/net/dev | awk '{print $10}')
+                lan_rx=$(grep "${LAN_IF}:" /proc/net/dev | awk '{print $2}')
+                lan_tx=$(grep "${LAN_IF}:" /proc/net/dev | awk '{print $10}')
+
+                PAYLOAD="{\"uptime\":${uptime_sec:-0},\"mem_total\":${mem_total:-0},\"mem_avail\":${mem_avail:-0},\"load\":\"${load1:-0}\",\"wan_rx\":${wan_rx:-0},\"wan_tx\":${wan_tx:-0},\"lan_rx\":${lan_rx:-0},\"lan_tx\":${lan_tx:-0}}"
+                mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" -t "pisowifi/router/stats/reply" -m "$PAYLOAD" 2>/dev/null
+            ) &
             ;;
 
         # ----------------------------------------------------------------

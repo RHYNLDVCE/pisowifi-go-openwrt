@@ -194,3 +194,11 @@ func SetSlotUser(mac string) {
 	defer slotMu.Unlock()
 	currentSlotUser = mac
 }
+
+// ---------------------------------------------------------------------------
+// Router Stats cache
+// ---------------------------------------------------------------------------
+var (
+	RouterStatsMu sync.RWMutex
+	RouterStats   map[string]interface{}
+)

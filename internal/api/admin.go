@@ -190,10 +190,30 @@ func wsSystemStats(c *websocket.Conn) {
 		if state.IsShuttingDown.Load() {
 			return
 		}
-		if err := c.WriteJSON(infrastructure.GetSystemStats()); err != nil {
+		
+		// 1. Request router stats
+		mqtt.Publish("pisowifi/router/stats/request", "{}")
+
+		// 2. Fetch local Orange Pi stats
+		piStats := infrastructure.GetSystemStats()
+
+		// 3. Fetch latest cached Router stats
+		state.RouterStatsMu.RLock()
+		rStats := state.RouterStats
+		state.RouterStatsMu.RUnlock()
+
+		// 4. Send combined object
+		combined := map[string]interface{}{
+			"orangepi": piStats,
+			"router":   rStats,
+		}
+
+		if err := c.WriteJSON(combined); err != nil {
 			return
 		}
-		time.Sleep(3 * time.Second)
+		
+		// The frontend calculates speed based on a 1-second interval
+		time.Sleep(1 * time.Second)
 	}
 }
 

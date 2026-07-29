@@ -1,22 +1,36 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Cpu, MemoryStick, HardDrive, Network, Timer, ArrowDownToLine, ArrowUpToLine, Usb, ArrowRightLeft } from 'lucide-react';
+import { Cpu, MemoryStick, HardDrive, Network, Timer, ArrowDownToLine, ArrowUpToLine, Usb, ArrowRightLeft, Server, Router } from 'lucide-react';
 
 export default function SystemStats() {
-  const [stats, setStats] = useState({
+  const [activeTab, setActiveTab] = useState('orangepi');
+  const [piStats, setPiStats] = useState({
     cpu: '0', temp: '--',
     ram: '0', ram_used: '0', ram_total: '0',
     disk: '0', disk_free: '0',
     uptime: '--',
     ips: 'Loading...',
-    interfaces: null,
-    wan_rx_total: 0,
-    wan_tx_total: 0,
-    lan_rx_total: 0,
-    lan_tx_total: 0
+  });
+  
+  const [routerStats, setRouterStats] = useState({
+    cpu: '0', temp: 'N/A',
+    ram: '0', ram_used: '0', ram_total: '0',
+    disk: 'N/A', disk_free: 'N/A',
+    uptime: '--',
+    ips: 'Managed by Router',
   });
 
   const [speeds, setSpeeds] = useState({ rx: 0, tx: 0, lan_rx: 0, lan_tx: 0 });
   const lastState = useRef({ rx: 0, tx: 0, lan_rx: 0, lan_tx: 0, time: Date.now() });
+
+  const formatUptime = (seconds) => {
+    if (!seconds) return '--';
+    const d = Math.floor(seconds / 86400);
+    const h = Math.floor((seconds % 86400) / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    if (d > 0) return `${d}d ${h}h ${m}m`;
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m} min`;
+  };
 
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -26,27 +40,56 @@ export default function SystemStats() {
 
     ws.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data);
-        setStats(prev => ({ ...prev, ...data }));
+        const rawData = JSON.parse(event.data);
+        const data = rawData.orangepi || rawData; // backwards compatibility
+        const rData = rawData.router || {};
+
+        if (data) {
+          setPiStats(prev => ({ ...prev, ...data }));
+        }
         
+        if (rData && rData.mem_total) {
+          const rUsed = rData.mem_total - rData.mem_avail;
+          const rPct = Math.round((rUsed / rData.mem_total) * 100);
+          
+          setRouterStats({
+            cpu: rData.load || '0',
+            temp: 'N/A', // Routers usually don't expose thermal zones easily
+            ram: rPct,
+            ram_used: (rUsed / 1024 / 1024).toFixed(2), // GB
+            ram_total: (rData.mem_total / 1024 / 1024).toFixed(2), // GB
+            disk: 'N/A',
+            disk_free: 'N/A',
+            uptime: formatUptime(rData.uptime),
+            ips: 'See router interface for IPs',
+          });
+        }
+        
+        // Calculate network flow using Router's traffic counters
         const now = Date.now();
         const timeDiff = (now - lastState.current.time) / 1000;
         
-        if (timeDiff > 0 && data.interfaces) {
-          if (lastState.current.rx > 0 && data.wan_rx_total !== undefined) {
-             const rxSpeed = Math.max(0, (data.wan_rx_total - lastState.current.rx) / timeDiff);
-             const txSpeed = Math.max(0, (data.wan_tx_total - lastState.current.tx) / timeDiff);
-             const lanRxSpeed = Math.max(0, ((data.lan_rx_total || 0) - lastState.current.lan_rx) / timeDiff);
-             const lanTxSpeed = Math.max(0, ((data.lan_tx_total || 0) - lastState.current.lan_tx) / timeDiff);
+        // Use router data for flow if available, else fallback to pi data (old architecture)
+        const wanRx = rData.wan_rx !== undefined ? rData.wan_rx : data.wan_rx_total;
+        const wanTx = rData.wan_tx !== undefined ? rData.wan_tx : data.wan_tx_total;
+        const lanRx = rData.lan_rx !== undefined ? rData.lan_rx : data.lan_rx_total;
+        const lanTx = rData.lan_tx !== undefined ? rData.lan_tx : data.lan_tx_total;
+        
+        if (timeDiff > 0) {
+          if (lastState.current.rx > 0 && wanRx !== undefined) {
+             const rxSpeed = Math.max(0, (wanRx - lastState.current.rx) / timeDiff);
+             const txSpeed = Math.max(0, (wanTx - lastState.current.tx) / timeDiff);
+             const lanRxSpeed = Math.max(0, ((lanRx || 0) - lastState.current.lan_rx) / timeDiff);
+             const lanTxSpeed = Math.max(0, ((lanTx || 0) - lastState.current.lan_tx) / timeDiff);
              setSpeeds({ rx: rxSpeed, tx: txSpeed, lan_rx: lanRxSpeed, lan_tx: lanTxSpeed });
           }
         }
         
         lastState.current = {
-           rx: data.wan_rx_total || lastState.current.rx,
-           tx: data.wan_tx_total || lastState.current.tx,
-           lan_rx: data.lan_rx_total || lastState.current.lan_rx,
-           lan_tx: data.lan_tx_total || lastState.current.lan_tx,
+           rx: wanRx || lastState.current.rx,
+           tx: wanTx || lastState.current.tx,
+           lan_rx: lanRx || lastState.current.lan_rx,
+           lan_tx: lanTx || lastState.current.lan_tx,
            time: now
         };
       } catch (err) {
@@ -64,6 +107,8 @@ export default function SystemStats() {
     const i = Math.floor(Math.log(bytesPerSec) / Math.log(k));
     return parseFloat((bytesPerSec / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
+
+  const displayStats = activeTab === 'orangepi' ? piStats : routerStats;
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -98,7 +143,7 @@ export default function SystemStats() {
               <ArrowRightLeft size={20} />
            </div>
 
-           {/* LAN Node Placeholder */}
+           {/* LAN Node */}
            <div className="flex-1 w-full flex items-center gap-4 relative z-10 bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 p-4 rounded shadow-sm">
              <div className="w-12 h-12 text-gray-900 dark:text-white rounded flex items-center justify-center shrink-0">
                <Usb size={24} />
@@ -118,6 +163,22 @@ export default function SystemStats() {
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="flex space-x-2 border-b border-gray-200 dark:border-zinc-800 pb-1">
+        <button
+          onClick={() => setActiveTab('orangepi')}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-t-md transition-colors ${activeTab === 'orangepi' ? 'bg-white dark:bg-zinc-950 border-t border-l border-r border-gray-200 dark:border-zinc-800 text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+        >
+          <Server size={16} /> Orange Pi Core
+        </button>
+        <button
+          onClick={() => setActiveTab('router')}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-t-md transition-colors ${activeTab === 'router' ? 'bg-white dark:bg-zinc-950 border-t border-l border-r border-gray-200 dark:border-zinc-800 text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+        >
+          <Router size={16} /> OpenWrt Router
+        </button>
+      </div>
+
       {/* Hardware Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         
@@ -129,8 +190,8 @@ export default function SystemStats() {
              </div>
           </div>
           <div>
-            <div className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.cpu}%</div>
-            <div className="text-[10px] sm:text-xs font-medium text-gray-500 mt-1">Temp: {stats.temp}°C</div>
+            <div className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{displayStats.cpu}{activeTab === 'orangepi' ? '%' : ''}</div>
+            <div className="text-[10px] sm:text-xs font-medium text-gray-500 mt-1">Temp: {displayStats.temp}{displayStats.temp !== 'N/A' ? '°C' : ''}</div>
           </div>
         </div>
 
@@ -142,8 +203,8 @@ export default function SystemStats() {
              </div>
           </div>
           <div>
-            <div className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.ram}%</div>
-            <div className="text-[10px] sm:text-xs font-medium text-gray-500 mt-1 truncate">Used: {stats.ram_used}G / {stats.ram_total}G</div>
+            <div className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{displayStats.ram}%</div>
+            <div className="text-[10px] sm:text-xs font-medium text-gray-500 mt-1 truncate">Used: {displayStats.ram_used}G / {displayStats.ram_total}G</div>
           </div>
         </div>
 
@@ -155,8 +216,8 @@ export default function SystemStats() {
              </div>
           </div>
           <div>
-            <div className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.disk}%</div>
-            <div className="text-[10px] sm:text-xs font-medium text-gray-500 mt-1">Free: {stats.disk_free}GB</div>
+            <div className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{displayStats.disk}{displayStats.disk !== 'N/A' ? '%' : ''}</div>
+            <div className="text-[10px] sm:text-xs font-medium text-gray-500 mt-1">Free: {displayStats.disk_free}{displayStats.disk_free !== 'N/A' ? 'GB' : ''}</div>
           </div>
         </div>
 
@@ -168,7 +229,7 @@ export default function SystemStats() {
              </div>
           </div>
           <div>
-            <div className="text-sm sm:text-base font-mono font-bold text-gray-900 dark:text-white break-all leading-relaxed">{stats.ips}</div>
+            <div className="text-sm sm:text-base font-mono font-bold text-gray-900 dark:text-white break-all leading-relaxed">{displayStats.ips}</div>
             <div className="text-[10px] sm:text-xs font-medium text-gray-500 mt-1">Local Network Interfaces</div>
           </div>
         </div>
@@ -181,7 +242,7 @@ export default function SystemStats() {
              </div>
           </div>
           <div>
-            <div className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white truncate">{stats.uptime}</div>
+            <div className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white truncate">{displayStats.uptime}</div>
             <div className="text-[10px] sm:text-xs font-medium text-gray-500 mt-1">Since Last Boot</div>
           </div>
         </div>

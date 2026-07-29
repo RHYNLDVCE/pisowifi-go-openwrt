@@ -38,6 +38,16 @@ func StartBackgroundTasks() {
 			PauseUser(p.MAC)
 		}
 	})
+
+	// Subscribe to router system stats replies
+	mqtt.Subscribe("pisowifi/router/stats/reply", func(_ paho.Client, msg paho.Message) {
+		var stats map[string]interface{}
+		if err := json.Unmarshal(msg.Payload(), &stats); err == nil {
+			state.RouterStatsMu.Lock()
+			state.RouterStats = stats
+			state.RouterStatsMu.Unlock()
+		}
+	})
 }
 
 // coinListener polls the coin GPIO and credits users on pulse detection.
