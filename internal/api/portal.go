@@ -70,13 +70,18 @@ func portalHome(c *fiber.Ctx) error {
 	// Identify client from source IP — same method as the old system.
 	// c.IP() returns the real client IP because the router no longer masquerades
 	// LAN→OrangePi traffic (hairpin masquerade was removed from nftables).
-	clientIP := c.IP()
+	clientIP := c.Query("ip")
+	if clientIP == "" || clientIP == "10.0.0.1" {
+		clientIP = c.IP()
+	}
+
 	clientMAC := network.GetMACByIP(clientIP)
+	if clientMAC == "" {
+		clientMAC = c.Query("mac")
+	}
 
 	if clientMAC == "" {
-		// ARP cache miss — send user back through the captive portal interceptor
-		// which will trigger a fresh redirect once the DHCP/ARP data arrives.
-		return c.Redirect("http://10.0.0.1:8080/trigger", fiber.StatusFound)
+		network.RequestARPSync()
 	}
 
 	if _, ok := state.Users.Get(clientMAC); !ok {
