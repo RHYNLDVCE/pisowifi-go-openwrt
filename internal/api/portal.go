@@ -74,9 +74,16 @@ func portalHome(c *fiber.Ctx) error {
 	clientMAC := network.GetMACByIP(clientIP)
 
 	if clientMAC == "" {
-		// ARP cache miss — send user back through the captive portal interceptor
-		// which will trigger a fresh redirect once the DHCP/ARP data arrives.
-		return c.Redirect("http://10.0.0.1:8080/trigger", fiber.StatusFound)
+		clientMAC = c.Query("mac")
+	}
+
+	if clientMAC == "" {
+		// Ask the router to dump its ARP table, just in case we missed it
+		network.RequestARPSync()
+
+		// ARP cache miss - serve a loading page that refreshes to allow time for ARP sync
+		c.Set("Refresh", "2; url=http://10.0.0.1/")
+		return c.SendString(`<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta http-equiv="refresh" content="2;url=http://10.0.0.1/"></head><body style="font-family:sans-serif;text-align:center;margin-top:20vh;"><h2>Loading Portal...</h2><p>Please wait a moment while we prepare your connection.</p><script>setTimeout(function(){window.location.reload();}, 2000);</script></body></html>`)
 	}
 
 	if _, ok := state.Users.Get(clientMAC); !ok {
@@ -307,7 +314,9 @@ func rewardsPage(c *fiber.Ctx) error {
 		mac = c.Query("mac")
 	}
 	if mac == "" {
-		return c.Redirect("http://10.0.0.1:8080/trigger", fiber.StatusFound)
+		network.RequestARPSync()
+		c.Set("Refresh", "2; url=/rewards")
+		return c.SendString(`<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta http-equiv="refresh" content="2;url=/rewards"></head><body style="font-family:sans-serif;text-align:center;margin-top:20vh;"><h2>Loading Rewards...</h2><p>Please wait a moment.</p><script>setTimeout(function(){window.location.reload();}, 2000);</script></body></html>`)
 	}
 	cfg := config.Get()
 
