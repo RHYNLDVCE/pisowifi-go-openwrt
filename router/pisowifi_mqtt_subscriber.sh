@@ -217,7 +217,7 @@ table ip pisowifi {
         iifname "${LAN}" udp dport 53 accept
         iifname "${LAN}" tcp dport 53 accept
         
-        # 4. Drop HTTPS for unauthorized users (prevents timeouts)
+        # 4. Drop HTTPS for unauthorized users (iPhone/iOS compatibility)
         iifname "${LAN}" ether saddr != @authorized_users tcp dport 443 drop
     }
 
@@ -241,9 +241,8 @@ table ip pisowifi {
         iifname "${LAN}" ether saddr != @authorized_users udp dport 53 dnat to 10.0.0.1:53
         iifname "${LAN}" ether saddr != @authorized_users tcp dport 53 dnat to 10.0.0.1:53
         
-        # Unauthorized users: intercept HTTP/HTTPS via local router uhttpd (302 → portal)
+        # Unauthorized users: intercept HTTP port 80 via local router uhttpd (302 → portal)
         iifname "${LAN}" ether saddr != @authorized_users ip daddr != 10.0.0.1 tcp dport 80 redirect to :8080
-        iifname "${LAN}" ether saddr != @authorized_users ip daddr != 10.0.0.1 tcp dport 443 redirect to :8080
     }
 
     chain nat_postrouting {

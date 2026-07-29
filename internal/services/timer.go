@@ -112,6 +112,11 @@ func TickUsers(ticks int) {
 					})
 					logger.SystemLog(fmt.Sprintf("[TIMER] User %s (IP: %s) out of time. Disconnecting...", mac, u.IP))
 					network.BlockUser(mac, u.IP)
+					state.Manager.Send(mac, map[string]any{
+						"type":           "sync",
+						"status":         "expired",
+						"time_remaining": 0,
+					})
 					if updated, ok := state.Users.Get(mac); ok {
 						toSync = append(toSync, toDBRecord(mac, updated))
 					}
