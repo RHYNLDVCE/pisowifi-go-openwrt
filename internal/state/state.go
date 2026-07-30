@@ -18,6 +18,7 @@ type UserRecord struct {
 	Balance         int     // unspent coin balance
 	FreeClaimed     int     // 0 or 1
 	Points          float64 // loyalty points
+	Hostname        string  // permanent device name
 	LastActive      float64 // Unix timestamp
 	ExpiresAt       float64 // wall-clock deadline (0 = not set)
 	LastByteCount   int64   // for idle detection

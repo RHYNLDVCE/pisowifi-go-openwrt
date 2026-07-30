@@ -24,6 +24,7 @@ import (
 
 	"pisowifi/internal/logger"
 	mqttcmd "pisowifi/internal/mqtt"
+	"pisowifi/internal/state"
 )
 
 // ---------------------------------------------------------------------------
@@ -98,6 +99,12 @@ func handleARPMessage(_ paho.Client, msg paho.Message) {
 		ipToMAC[ip] = mac
 		if p.Hostname != "" {
 			macToHost[mac] = p.Hostname
+			// Push it directly to the session state so it can be saved to SQLite permanently
+			state.Users.UpdateField(mac, func(u *state.UserRecord) {
+				if u.Hostname == "" || u.Hostname != p.Hostname {
+					u.Hostname = p.Hostname
+				}
+			})
 		}
 		logger.SystemLog("[ARP] Learned: " + mac + " → " + ip + " (" + p.Hostname + ")")
 
@@ -106,8 +113,9 @@ func handleARPMessage(_ paho.Client, msg paho.Message) {
 			delete(ipToMAC, oldIP)
 		}
 		delete(macToIP, mac)
-		delete(macToHost, mac)
-		logger.SystemLog("[ARP] Removed: " + mac + " (was " + ip + ")")
+		// We intentionally DO NOT delete macToHost[mac] here!
+		// If a user's phone goes to sleep, we still want the Admin UI to know their hostname.
+		logger.SystemLog("[ARP] Removed IP mapping: " + mac + " (was " + ip + ")")
 	}
 }
 

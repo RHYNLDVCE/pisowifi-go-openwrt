@@ -67,6 +67,7 @@ func main() {
 			Balance:     rec.Balance,
 			FreeClaimed: rec.FreeClaimed,
 			Points:      rec.Points,
+			Hostname:    rec.Hostname,
 		})
 	}
 

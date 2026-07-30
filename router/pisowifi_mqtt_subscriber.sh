@@ -381,6 +381,50 @@ auto_pause_monitor() {
 auto_pause_monitor &
 
 # ---------------------------------------------------------------------------
+# Apply Failsafe Block
+# ---------------------------------------------------------------------------
+# Blocks all users immediately on router boot so they don't get free internet
+# while waiting for the Orange Pi to start up and send the firewall/init payload.
+apply_failsafe_block() {
+    logger -t pisowifi "[FIREWALL] Applying default failsafe block on boot."
+    local LAN="br-lan"
+    nft -f - <<EOF
+add table ip pisowifi
+flush table ip pisowifi
+table ip pisowifi {
+    set authorized_users {
+        type ether_addr
+        size 65535
+        flags dynamic
+        counter
+    }
+    chain filter_forward {
+        type filter hook forward priority filter; policy drop;
+        ct state established,related accept
+        iifname "${LAN}" ip saddr 10.0.0.2 accept
+        oifname "${LAN}" ip daddr 10.0.0.2 accept
+        iifname "${LAN}" ether saddr @authorized_users accept
+        oifname "${LAN}" ether daddr @authorized_users accept
+        iifname "${LAN}" udp dport 53 accept
+        iifname "${LAN}" tcp dport 53 accept
+        iifname "${LAN}" ether saddr != @authorized_users tcp dport 443 drop
+    }
+    chain nat_prerouting {
+        type nat hook prerouting priority dstnat; policy accept;
+        iifname "${LAN}" ip saddr 10.0.0.2 accept
+        iifname "${LAN}" ether saddr != @authorized_users udp dport 53 dnat to 10.0.0.1:53
+        iifname "${LAN}" ether saddr != @authorized_users tcp dport 53 dnat to 10.0.0.1:53
+        iifname "${LAN}" ip daddr 10.0.0.1 tcp dport 80 dnat to 10.0.0.2:80
+        iifname "${LAN}" ether saddr != @authorized_users ip daddr != { 10.0.0.1, 10.0.0.3 } tcp dport 80 redirect to :8080
+        iifname "${LAN}" ether saddr != @authorized_users ip daddr != { 10.0.0.1, 10.0.0.3 } tcp dport 443 redirect to :8080
+    }
+}
+EOF
+}
+
+apply_failsafe_block
+
+# ---------------------------------------------------------------------------
 # Main subscriber loop
 # ---------------------------------------------------------------------------
 logger -t pisowifi "[MQTT] Subscriber starting on topics: $MQTT_TOPICS"

@@ -140,6 +140,7 @@ func toDBRecord(mac string, u *state.UserRecord) db.UserRecord {
 		Balance:     u.Balance,
 		FreeClaimed: u.FreeClaimed,
 		Points:      u.Points,
+		Hostname:    u.Hostname,
 	}
 }
 

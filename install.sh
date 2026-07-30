@@ -13,24 +13,14 @@ echo "=========================================="
 echo "    PisoWifi System Dependency Installer  "
 echo "=========================================="
 
-echo "[1/3] Updating system package list..."
+echo "[1/4] Updating system package list..."
 apt update -y
 
-echo "[2/3] Installing Core Linux Networking & Utilities..."
-# nftables: Firewall & NAT
-# iproute2: tc for QoS/SQM speed limits
-# conntrack: Disconnect active sessions
-# ethtool: Disable hardware offloading for SQM
-# miniupnpd: Open NAT/Gaming mode
-# ipset: Fallback block list for fail_safe.sh
+echo "[2/4] Installing Core Utilities & MQTT Client..."
+# mosquitto-clients: Required for fail_safe.sh to communicate with the OpenWrt router
 # coreutils, procps, iputils-ping, sudo: Core system commands
 apt install -y \
-    nftables \
-    iproute2 \
-    conntrack \
-    ethtool \
-    miniupnpd \
-    ipset \
+    mosquitto-clients \
     sudo \
     coreutils \
     iputils-ping \
@@ -43,7 +33,7 @@ echo "[3/4] Installing Build Tools (Go)..."
 apt install -y golang
 
 
-echo "[5/5] Installing Systemd Service..."
+echo "[4/4] Installing Systemd Service..."
 if [ -f "pisowifi.service" ]; then
     cp pisowifi.service /etc/systemd/system/
     systemctl daemon-reload

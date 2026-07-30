@@ -10,6 +10,7 @@ import (
 
 	"pisowifi/internal/config"
 	"pisowifi/internal/network"
+	"pisowifi/internal/state"
 )
 
 // ---------------------------------------------------------------------------
@@ -37,6 +38,11 @@ func GetVendorInfo(mac, ip string) (string, bool) {
 
 	brand := ouiLookup(oui)
 	hostname := network.GetHostnameByMAC(mac)
+	if hostname == "" {
+		if u, ok := state.Users.Get(mac); ok && u.Hostname != "" {
+			hostname = u.Hostname
+		}
+	}
 
 	isKnown := brand != "Unknown"
 	var display string

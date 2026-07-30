@@ -30,6 +30,7 @@ type UserRecord struct {
 	Balance     int
 	FreeClaimed int
 	Points      float64
+	Hostname    string
 }
 
 // SaleRecord is a single coin-insertion history row.
@@ -76,7 +77,8 @@ func InitDB() {
 		last_updated INTEGER,
 		balance      INTEGER DEFAULT 0,
 		free_claimed INTEGER DEFAULT 0,
-		points       REAL    DEFAULT 0
+		points       REAL    DEFAULT 0,
+		hostname     TEXT    DEFAULT ''
 	)`)
 
 	mustExec(`CREATE TABLE IF NOT EXISTS sales (
@@ -102,10 +104,10 @@ func InitDB() {
 		used_at    INTEGER
 	)`)
 
-	// Safe migrations — ignore errors if column already exists
 	safeExec("ALTER TABLE users ADD COLUMN balance INTEGER DEFAULT 0")
 	safeExec("ALTER TABLE users ADD COLUMN free_claimed INTEGER DEFAULT 0")
 	safeExec("ALTER TABLE users ADD COLUMN points REAL DEFAULT 0")
+	safeExec("ALTER TABLE users ADD COLUMN hostname TEXT DEFAULT ''")
 
 	// Seed default admin (fresh password hash)
 	seedAdmin()
@@ -223,7 +225,7 @@ func VerifyAdmin(username, password string) bool {
 // ---------------------------------------------------------------------------
 
 func LoadUsers() map[string]UserRecord {
-	rows, err := db.Query("SELECT mac, ip, time_remaining, status, balance, free_claimed, points FROM users")
+	rows, err := db.Query("SELECT mac, ip, time_remaining, status, balance, free_claimed, points, hostname FROM users")
 	if err != nil {
 		logger.SystemLog(fmt.Sprintf("[DB ERROR] LoadUsers: %v", err))
 		return map[string]UserRecord{}
@@ -233,7 +235,7 @@ func LoadUsers() map[string]UserRecord {
 	result := make(map[string]UserRecord)
 	for rows.Next() {
 		var u UserRecord
-		if err := rows.Scan(&u.MAC, &u.IP, &u.Time, &u.Status, &u.Balance, &u.FreeClaimed, &u.Points); err != nil {
+		if err := rows.Scan(&u.MAC, &u.IP, &u.Time, &u.Status, &u.Balance, &u.FreeClaimed, &u.Points, &u.Hostname); err != nil {
 			continue
 		}
 		result[u.MAC] = u
@@ -244,9 +246,9 @@ func LoadUsers() map[string]UserRecord {
 func SyncUser(u UserRecord) {
 	_, err := db.Exec(
 		`INSERT OR REPLACE INTO users
-		 (mac, ip, time_remaining, status, last_updated, balance, free_claimed, points)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		u.MAC, u.IP, u.Time, u.Status, time.Now().Unix(), u.Balance, u.FreeClaimed, u.Points,
+		 (mac, ip, time_remaining, status, last_updated, balance, free_claimed, points, hostname)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		u.MAC, u.IP, u.Time, u.Status, time.Now().Unix(), u.Balance, u.FreeClaimed, u.Points, u.Hostname,
 	)
 	if err != nil {
 		logger.SystemLog(fmt.Sprintf("[DB ERROR] SyncUser %s: %v", u.MAC, err))
@@ -264,8 +266,8 @@ func SyncMultipleUsers(users []UserRecord) {
 	}
 	stmt, err := tx.Prepare(
 		`INSERT OR REPLACE INTO users
-		 (mac, ip, time_remaining, status, last_updated, balance, free_claimed, points)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		 (mac, ip, time_remaining, status, last_updated, balance, free_claimed, points, hostname)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 	)
 	if err != nil {
 		tx.Rollback()
@@ -273,7 +275,7 @@ func SyncMultipleUsers(users []UserRecord) {
 	}
 	now := time.Now().Unix()
 	for _, u := range users {
-		_, _ = stmt.Exec(u.MAC, u.IP, u.Time, u.Status, now, u.Balance, u.FreeClaimed, u.Points)
+		_, _ = stmt.Exec(u.MAC, u.IP, u.Time, u.Status, now, u.Balance, u.FreeClaimed, u.Points, u.Hostname)
 	}
 	stmt.Close()
 	if err := tx.Commit(); err != nil {

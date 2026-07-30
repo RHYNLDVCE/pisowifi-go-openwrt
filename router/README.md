@@ -23,14 +23,14 @@ via MQTT commands from the Orange Pi.
 SSH into your router and run:
 
 ```sh
-opkg update
-opkg install mosquitto mosquitto-client-ssl kmod-nft-core nftables tc-full kmod-sched-cake kmod-sched-core kmod-ifb conntrack
+apk update
+apk add mosquitto mosquitto-client-nossl kmod-nft-core nftables tc-full kmod-sched-cake kmod-sched-core kmod-ifb conntrack
 ```
 
 > **Note:** `jsonfilter` is already built into OpenWrt.
 > Run:
 > ```sh
-> opkg install kmod-nf-conntrack
+> apk add kmod-nf-conntrack
 > ```
 > Then verify the userspace command is available:
 > ```sh

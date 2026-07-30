@@ -1,15 +1,18 @@
 #!/bin/bash
+# fail_safe.sh
+# Triggered by systemd when the pisowifi-server stops or crashes.
 
-# 1. Flush the IPSet (Removes all authorized MACs instantly)
-# If the set doesn't exist, ignore the error
-ipset flush authorized_users 2>/dev/null
+ROUTER_IP="10.0.0.1"
 
-# 2. Kill all active connections (Stop videos/games immediately)
-conntrack -F 2>/dev/null
+# 1. Send the "offline" Last Will message to the router
+# The router's MQTT subscriber will catch this, flush all connections,
+# and block all active users instantly to prevent free internet.
+mosquitto_pub -h $ROUTER_IP -t 'pisowifi/lwt' -m '{"status":"offline"}' 2>/dev/null
 
-# 3. (Optional) Turn off Coin Slot Relay (GPIO 5 on Orange Pi)
-# We use 'gpio' command if available, or sysfs
-# Adjust '5' to your specific pin mapping if needed
-gpio write 5 0 2>/dev/null
+# 2. Turn off the Coin Slot Relay on the Orange Pi 3 LTS (GPIO 121)
+# This uses sysfs to ensure power is cut to the coin acceptor so it rejects coins
+if [ -d "/sys/class/gpio/gpio121" ]; then
+    echo "0" > /sys/class/gpio/gpio121/value 2>/dev/null
+fi
 
-echo "🔒 FAIL-SAFE TRIGGERED: Internet blocked & Sessions killed."
+echo "🔒 FAIL-SAFE TRIGGERED: Sent offline signal to router & disabled coin slot."
