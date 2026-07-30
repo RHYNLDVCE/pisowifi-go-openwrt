@@ -12,7 +12,7 @@ User=root
 WorkingDirectory=/srv/pisowifi-golang
 
 # Run the compiled Go binary (Make sure you ran 'go build -o pisowifi-server cmd/server/main.go' first)
-ExecStart=/srv/pisowifi-golang/pisowifi-server
+ExecStart=/srv/pisowifi-go-openwrt/pisowifi-server
 
 # Restart on crash, but wait 5s to prevent CPU spam during boot loops
 Restart=always
