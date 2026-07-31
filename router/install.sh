@@ -42,10 +42,22 @@ uci set network.lan_admin.netmask='255.255.255.0'
 uci commit network
 
 echo ""
+echo "Disabling IPv6 on the LAN to prevent captive portal bypass..."
+uci set network.lan.ipv6='0'
+uci delete network.lan.ip6assign 2>/dev/null || true
+uci commit network
+
+echo ""
 echo "Configuring DHCP pool for captive portal..."
 uci set dhcp.lan.start='10'
 uci set dhcp.lan.limit='60000'
 uci set dhcp.lan.leasetime='12h'
+
+# Disable IPv6 DHCP/RA features
+uci set dhcp.lan.dhcpv6='disabled'
+uci set dhcp.lan.ra='disabled'
+uci set dhcp.lan.ndp='disabled'
+
 uci commit dhcp
 
 echo ""

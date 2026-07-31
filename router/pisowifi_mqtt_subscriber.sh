@@ -186,6 +186,16 @@ add chain inet filter forward { type filter hook forward priority filter; policy
 
 add table ip pisowifi
 flush table ip pisowifi
+
+# Drop ALL IPv6 traffic to prevent captive portal bypass via IPv6
+add table ip6 pisowifi_ipv6
+flush table ip6 pisowifi_ipv6
+table ip6 pisowifi_ipv6 {
+    chain filter_forward {
+        type filter hook forward priority filter; policy drop;
+    }
+}
+
 table ip pisowifi {
     set authorized_users {
         type ether_addr
@@ -262,10 +272,8 @@ table ip pisowifi {
         iifname "${LAN}" ether saddr != @authorized_users udp dport 53 dnat to 10.0.0.1:53
         iifname "${LAN}" ether saddr != @authorized_users tcp dport 53 dnat to 10.0.0.1:53
         
-        # Unauthorized users: intercept HTTP/HTTPS via local router uhttpd (302 → portal)
-        iifname "${LAN}" ether saddr != @authorized_users ip daddr != { 10.0.0.1, 10.0.0.3 } tcp dport 80 redirect to :8080
-        iifname "${LAN}" ether saddr != @authorized_users ip daddr != { 10.0.0.1, 10.0.0.3 } tcp dport 443 redirect to :8080
-    }
+        # Unauthorized users: intercept HTTP (e.g. captive portal checks) and DNAT to Orange Pi
+        iifname "${LAN}" ether saddr != @authorized_users ip daddr != { 10.0.0.1, 10.0.0.2, 10.0.0.3 } tcp dport 80 dnat to 10.0.0.2:80
 
     chain nat_postrouting {
         type nat hook postrouting priority srcnat; policy accept;
@@ -391,6 +399,15 @@ apply_failsafe_block() {
     nft -f - <<EOF
 add table ip pisowifi
 flush table ip pisowifi
+
+add table ip6 pisowifi_ipv6
+flush table ip6 pisowifi_ipv6
+table ip6 pisowifi_ipv6 {
+    chain filter_forward {
+        type filter hook forward priority filter; policy drop;
+    }
+}
+
 table ip pisowifi {
     set authorized_users {
         type ether_addr
@@ -415,9 +432,8 @@ table ip pisowifi {
         iifname "${LAN}" ether saddr != @authorized_users udp dport 53 dnat to 10.0.0.1:53
         iifname "${LAN}" ether saddr != @authorized_users tcp dport 53 dnat to 10.0.0.1:53
         iifname "${LAN}" ip daddr 10.0.0.1 tcp dport 80 dnat to 10.0.0.2:80
-        iifname "${LAN}" ether saddr != @authorized_users ip daddr != { 10.0.0.1, 10.0.0.3 } tcp dport 80 redirect to :8080
-        iifname "${LAN}" ether saddr != @authorized_users ip daddr != { 10.0.0.1, 10.0.0.3 } tcp dport 443 redirect to :8080
-    }
+        iifname "${LAN}" ip daddr 10.0.0.1 tcp dport 80 dnat to 10.0.0.2:80
+        iifname "${LAN}" ether saddr != @authorized_users ip daddr != { 10.0.0.1, 10.0.0.2, 10.0.0.3 } tcp dport 80 dnat to 10.0.0.2:80
 }
 EOF
 }
@@ -450,6 +466,11 @@ mosquitto_sub \
             if [ -n "$MAC" ]; then
                 nft add element ip pisowifi authorized_users "{ $MAC counter }" 2>/dev/null || true
                 logger -t pisowifi "[ALLOW] $MAC ($IP)"
+            fi
+            if [ -n "$IP" ]; then
+                # Flush connections to break captive portal redirect loops immediately
+                conntrack -D -s "$IP" 2>/dev/null || true
+                conntrack -D -d "$IP" 2>/dev/null || true
             fi
             ;;
 
