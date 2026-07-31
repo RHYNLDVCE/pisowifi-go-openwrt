@@ -1199,6 +1199,10 @@
         btnInsert.className = "btn btn-insert";
         btnInsert.disabled = false;
 
+        if (data.error) {
+            showToast(data.error, "error");
+        }
+
         if (data.status === "connected") {
             statusBadge.innerText = "ONLINE";
             badgeContainer.style.background = "rgba(16, 185, 129, 0.2)";
@@ -1208,6 +1212,22 @@
             btnAction.className = "btn btn-pause";
             btnAction.disabled = false;
             btnAction.onclick = pauseInternet;
+        } else if (data.status === "pending_pause") {
+            statusBadge.innerText = "PAUSING...";
+            badgeContainer.style.background = "rgba(156, 163, 175, 0.2)";
+            connStatus.innerText = "Applying firewall rules...";
+            connStatus.style.color = "var(--text-sub)";
+            btnAction.innerText = "PLEASE WAIT";
+            btnAction.className = "btn btn-disabled";
+            btnAction.disabled = true;
+        } else if (data.status === "pending_connect") {
+            statusBadge.innerText = "RESUMING...";
+            badgeContainer.style.background = "rgba(156, 163, 175, 0.2)";
+            connStatus.innerText = "Applying firewall rules...";
+            connStatus.style.color = "var(--text-sub)";
+            btnAction.innerText = "PLEASE WAIT";
+            btnAction.className = "btn btn-disabled";
+            btnAction.disabled = true;
         } else if (data.status === "paused" || (data.time_remaining > 0 || localTime > 0)) {
             statusBadge.innerText = "PAUSED";
             badgeContainer.style.background = "rgba(245, 158, 11, 0.2)";

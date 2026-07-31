@@ -85,7 +85,7 @@ func RemoveSpeedLimit(ip string) error {
 // InitFirewall tells the router to run the full nftables init sequence.
 // Called once at Orange Pi startup.
 func InitFirewall(p firewallInitPayload) error {
-	return Publish("pisowifi/firewall/init", p)
+	return PublishRetained("pisowifi/firewall/init", p)
 }
 
 // ReloadFirewall tells the router to reload nftables rules.

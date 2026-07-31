@@ -95,11 +95,12 @@ export default function Logs() {
     if (t.includes('COIN')) return 'Coin';
     if (t.includes('PORTAL')) return 'Portal';
     if (t.includes('ADMIN') || t.includes('LOGIN') || t.includes('LOGOUT') || t.includes('CONFIG') || t.includes('USER') || t.includes('DEVICE') || t.includes('UPDATE')) return 'Admin';
-    if (t.includes('SECURITY') || t.includes('ERROR')) return 'Security';
+    if (t.includes('ERROR') || t.includes('FAIL') || t.includes('TIMEOUT')) return 'Error';
+    if (t.includes('SECURITY')) return 'Security';
     return 'System';
   };
 
-  const categories = ['All', 'Coin', 'Portal', 'Admin', 'Security', 'System'];
+  const categories = ['All', 'Coin', 'Portal', 'Admin', 'Security', 'Error', 'System'];
   
   // First, filter by search term so category counts reflect the search results
   const searchFilteredLogs = logs.filter(log => {
@@ -132,7 +133,8 @@ export default function Logs() {
     if (cat === 'Coin') return isActive ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' : 'bg-green-50 text-green-600 hover:bg-green-100 dark:bg-green-500/10 dark:text-green-500';
     if (cat === 'Portal') return isActive ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' : 'bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-500';
     if (cat === 'Admin') return isActive ? 'bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400' : 'bg-orange-50 text-orange-600 hover:bg-orange-100 dark:bg-orange-500/10 dark:text-orange-500';
-    if (cat === 'Security') return isActive ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400' : 'bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-500';
+    if (cat === 'Error') return isActive ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400' : 'bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-500';
+    if (cat === 'Security') return isActive ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400' : 'bg-purple-50 text-purple-600 hover:bg-purple-100 dark:bg-purple-500/10 dark:text-purple-500';
     if (cat === 'System') return isActive ? 'bg-gray-200 text-gray-700 dark:bg-zinc-700 dark:text-gray-300' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-zinc-800 dark:text-gray-400';
     return '';
   };
@@ -141,7 +143,8 @@ export default function Logs() {
     if (cat === 'Coin') return 'bg-green-500';
     if (cat === 'Portal') return 'bg-blue-500';
     if (cat === 'Admin') return 'bg-orange-500';
-    if (cat === 'Security') return 'bg-red-500';
+    if (cat === 'Error') return 'bg-red-500';
+    if (cat === 'Security') return 'bg-purple-500';
     if (cat === 'System') return 'bg-gray-500';
     return '';
   };

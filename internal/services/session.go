@@ -54,12 +54,28 @@ func ConnectUser(mac string) string {
 
 	// Connect
 	state.Users.UpdateField(mac, func(u *state.UserRecord) {
-		u.Status = "connected"
+		u.Status = "pending_connect"
 		u.LastActive = float64(time.Now().UnixNano()) / 1e9
-		u.ExpiresAt = float64(time.Now().UnixNano())/1e9 + float64(u.Time)
 	})
 
 	network.AllowUser(mac, user.IP)
+
+	// Set a 10s timeout to revert if ACK doesn't arrive
+	go func() {
+		time.Sleep(10 * time.Second)
+		if u, ok := state.Users.Get(mac); ok && u.Status == "pending_connect" {
+			state.Users.UpdateField(mac, func(ur *state.UserRecord) {
+				ur.Status = "paused"
+			})
+			logger.SystemLog(fmt.Sprintf("[ERROR] Router timeout for MAC %s: failed to connect", mac))
+			state.Manager.Send(mac, map[string]any{
+				"type":           "sync",
+				"status":         "paused",
+				"error":          "Router timeout: failed to connect",
+				"time_remaining": u.Time,
+			})
+		}
+	}()
 
 	// Close slot if this user had it open
 	if state.GetSlotUser() == mac {
@@ -71,12 +87,10 @@ func ConnectUser(mac string) string {
 		db.SyncUser(toDBRecord(mac, u))
 	}
 
-
-
 	if u, ok := state.Users.Get(mac); ok {
 		state.Manager.Send(mac, map[string]any{
 			"type":           "sync",
-			"status":         "connected",
+			"status":         "pending_connect",
 			"time_remaining": u.Time,
 			"balance":        0,
 			"points":         u.Points,
@@ -100,24 +114,33 @@ func PauseUser(mac string) string {
 
 	// Snapshot true remaining seconds from deadline
 	state.Users.UpdateField(mac, func(u *state.UserRecord) {
-		if u.ExpiresAt > 0 {
-			remaining := u.ExpiresAt - float64(time.Now().UnixNano())/1e9
-			if remaining < 0 {
-				remaining = 0
-			}
-			u.Time = int(remaining)
-			u.ExpiresAt = 0
-		}
-		u.Status = "paused"
+		u.Status = "pending_pause"
 	})
 
 	network.BlockUser(mac, user.IP)
+
+	// Set a 10s timeout to revert if ACK doesn't arrive
+	go func() {
+		time.Sleep(10 * time.Second)
+		if u, ok := state.Users.Get(mac); ok && u.Status == "pending_pause" {
+			state.Users.UpdateField(mac, func(ur *state.UserRecord) {
+				ur.Status = "connected"
+			})
+			logger.SystemLog(fmt.Sprintf("[ERROR] Router timeout for MAC %s: failed to pause", mac))
+			state.Manager.Send(mac, map[string]any{
+				"type":           "sync",
+				"status":         "connected",
+				"error":          "Router timeout: failed to pause",
+				"time_remaining": u.Time,
+			})
+		}
+	}()
 
 	if u, ok := state.Users.Get(mac); ok {
 		db.SyncUser(toDBRecord(mac, u))
 		state.Manager.Send(mac, map[string]any{
 			"type":           "sync",
-			"status":         "paused",
+			"status":         "pending_pause",
 			"time_remaining": u.Time,
 			"balance":        u.Balance,
 			"points":         u.Points,

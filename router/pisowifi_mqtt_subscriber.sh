@@ -277,7 +277,17 @@ EOF
     tc qdisc del dev "$LAN" ingress 2>/dev/null || true
     tc qdisc add dev "$LAN" root handle 1: htb default 10
     tc class add dev "$LAN" parent 1: classid 1:ffff htb rate 1000mbit
-    tc qdisc add dev "$LAN" ingress
+    
+    # IFB setup for LAN Upload (Ingress -> IFB)
+    ip link del ifb1 2>/dev/null || true
+    ip link add name ifb1 type ifb
+    ip link set dev ifb1 up
+    tc qdisc del dev ifb1 root 2>/dev/null || true
+    tc qdisc add dev ifb1 root handle 2: htb default 10
+    tc class add dev ifb1 parent 2: classid 2:ffff htb rate 1000mbit
+
+    tc qdisc add dev "$LAN" handle ffff: ingress
+    tc filter add dev "$LAN" parent ffff: protocol all u32 match u32 0 0 action mirred egress redirect dev ifb1
 
     # SQM on WAN
     tc qdisc del dev "$WAN" root 2>/dev/null || true
@@ -285,7 +295,7 @@ EOF
     ip link del ifb0 2>/dev/null || true
 
     if [ "$SQM" = "true" ]; then
-        tc qdisc add dev "$WAN" root cake bandwidth "${SQM_UP}mbit" diffserv4 nat wash
+        tc qdisc add dev "$WAN" root cake bandwidth "${SQM_UP}mbit" diffserv4 nat
         ip link add name ifb0 type ifb
         ip link set dev ifb0 up
         tc qdisc add dev "$WAN" handle ffff: ingress
@@ -447,6 +457,7 @@ mosquitto_sub \
             if [ -n "$MAC" ]; then
                 nft add element ip pisowifi authorized_users "{ $MAC counter }" 2>/dev/null || true
                 logger -t pisowifi "[ALLOW] $MAC ($IP)"
+                mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" -t "pisowifi/ack/allow" -m "{\"mac\":\"$MAC\",\"status\":\"success\"}" 2>/dev/null &
             fi
             if [ -n "$IP" ]; then
                 # Flush connections to break captive portal redirect loops immediately
@@ -463,6 +474,7 @@ mosquitto_sub \
             IP=$(echo "$payload"  | jsonfilter -e '@.ip')
             if [ -n "$MAC" ]; then
                 nft delete element ip pisowifi authorized_users "{ $MAC }" 2>/dev/null || true
+                mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" -t "pisowifi/ack/block" -m "{\"mac\":\"$MAC\",\"status\":\"success\"}" 2>/dev/null &
             fi
             if [ -n "$IP" ]; then
                 conntrack -D -s "$IP" 2>/dev/null || true
@@ -483,12 +495,17 @@ mosquitto_sub \
                 UID=$(get_uid "$IP")
                 UID_HEX=$(printf '%x' "$UID")
                 SPEED="${MBPS}mbit"
-                UPLOAD_KBPS=$(( MBPS * 1024 ))
 
+                # Download (Egress on $LAN)
                 tc class replace dev "$LAN" parent 1:ffff classid "1:${UID_HEX}" htb rate "$SPEED" ceil "$SPEED" burst 15k cburst 15k
-                tc qdisc replace dev "$LAN" parent "1:${UID_HEX}" handle "${UID_HEX}:" cake bandwidth "$SPEED"
+                tc qdisc replace dev "$LAN" parent "1:${UID_HEX}" handle "${UID_HEX}:" cake bandwidth "$SPEED" diffserv4 wash
                 tc filter add dev "$LAN" protocol ip parent 1:0 prio "$UID" u32 match ip dst "$IP" flowid "1:${UID_HEX}"
-                tc filter add dev "$LAN" parent ffff: protocol ip prio "$UID" u32 match ip src "$IP" police rate "${UPLOAD_KBPS}kbit" burst 12k drop flowid :1
+                
+                # Upload (Egress on ifb1, which is Ingress from $LAN)
+                tc class replace dev ifb1 parent 2:ffff classid "2:${UID_HEX}" htb rate "$SPEED" ceil "$SPEED" burst 15k cburst 15k
+                tc qdisc replace dev ifb1 parent "2:${UID_HEX}" handle "${UID_HEX}:" cake bandwidth "$SPEED" diffserv4 wash
+                tc filter add dev ifb1 protocol ip parent 2:0 prio "$UID" u32 match ip src "$IP" flowid "2:${UID_HEX}"
+                
                 logger -t pisowifi "[SPEED] Applied ${MBPS}mbit to $IP"
             fi
             ;;
@@ -503,10 +520,16 @@ mosquitto_sub \
             if [ -n "$IP" ]; then
                 UID=$(get_uid "$IP")
                 UID_HEX=$(printf '%x' "$UID")
+                
+                # Remove Download rules
                 tc filter del dev "$LAN" protocol ip parent 1:0 prio "$UID" 2>/dev/null || true
-                tc filter del dev "$LAN" protocol ip parent ffff: prio "$UID" 2>/dev/null || true
                 tc qdisc del dev "$LAN" parent "1:${UID_HEX}" 2>/dev/null || true
                 tc class del dev "$LAN" parent 1:ffff classid "1:${UID_HEX}" 2>/dev/null || true
+                
+                # Remove Upload rules
+                tc filter del dev ifb1 protocol ip parent 2:0 prio "$UID" 2>/dev/null || true
+                tc qdisc del dev ifb1 parent "2:${UID_HEX}" 2>/dev/null || true
+                tc class del dev ifb1 parent 2:ffff classid "2:${UID_HEX}" 2>/dev/null || true
                 logger -t pisowifi "[SPEED] Removed limit for $IP"
             fi
             ;;
@@ -569,8 +592,8 @@ mosquitto_sub \
                 LAN_IF=$(nft list tables | grep -q pisowifi && nft list chain ip pisowifi filter_forward 2>/dev/null | grep iifname | head -1 | awk '{print $2}' | tr -d '"' || echo "br-lan")
                 WAN_IF=$(ip route | awk '/default/ {print $5}')
                 
-                # Get IP addresses, comma separated then replaced to literal \n for JSON
-                ips_str=$(ip -4 addr show | grep inet | grep -v '127.0.0.1' | awk '{print $2}' | cut -d/ -f1 | paste -sd, - | sed 's/,/\\n/g')
+                # Get IP addresses, replacing newlines with literal \n for JSON
+                ips_str=$(ip -4 addr show | awk '/inet / && !/127\.0\.0\.1/ { split($2, a, "/"); ips = ips (ips=="" ? "" : "\\n") a[1] } END { print ips }')
 
                 wan_rx=$(grep "${WAN_IF}:" /proc/net/dev | awk '{print $2}')
                 wan_tx=$(grep "${WAN_IF}:" /proc/net/dev | awk '{print $10}')

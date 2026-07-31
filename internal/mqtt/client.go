@@ -127,6 +127,31 @@ func Publish(topic string, payload interface{}) error {
 	return nil
 }
 
+// PublishRetained sends a JSON-encoded payload to the given topic with the Retained flag set to true.
+// This ensures that late subscribers (like the router script on a slow boot) will still receive the message.
+func PublishRetained(topic string, payload interface{}) error {
+	if mqttClient == nil {
+		logger.SystemLog("[MQTT] PublishRetained attempted before Init()")
+		return fmt.Errorf("mqtt client not initialized")
+	}
+
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("mqtt marshal: %w", err)
+	}
+
+	token := mqttClient.Publish(topic, qos, true, data)
+	if !token.WaitTimeout(2 * time.Second) {
+		logger.SystemLog(fmt.Sprintf("[MQTT] PublishRetained timed out: topic=%s", topic))
+		return fmt.Errorf("mqtt publish timeout: %s", topic)
+	}
+	if err := token.Error(); err != nil {
+		logger.SystemLog(fmt.Sprintf("[MQTT] PublishRetained error: topic=%s err=%v", topic, err))
+		return err
+	}
+	return nil
+}
+
 // Subscribe registers a handler for the given topic pattern (QoS 1).
 // Used for receiving ACKs / traffic stats from the router.
 func Subscribe(topic string, handler paho.MessageHandler) {

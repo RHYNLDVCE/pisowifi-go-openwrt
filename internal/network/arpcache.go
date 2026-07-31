@@ -72,7 +72,7 @@ func RequestARPSync() {
 	lastSyncTime = time.Now()
 	syncMu.Unlock()
 
-	if err := mqttcmd.Publish("pisowifi/arp/request", map[string]string{"action": "dump"}); err != nil {
+	if err := mqttcmd.PublishRetained("pisowifi/arp/request", map[string]string{"action": "dump"}); err != nil {
 		logger.SystemLog("[ARP] Failed to publish arp/request: " + err.Error())
 	}
 }

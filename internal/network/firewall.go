@@ -62,6 +62,7 @@ func InitFirewall() {
 	// Subscribe to pisowifi/arp and request a full MAC→IP dump from the router.
 	// This must run AFTER mqtt.Init() so the subscription takes effect immediately.
 	InitARPCache()
+	InitACKs()
 }
 
 // ReloadFirewall sends a reload command to the router (e.g. after config change)
