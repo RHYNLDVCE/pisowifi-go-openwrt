@@ -78,24 +78,10 @@ func IsReachable(ip string) bool {
 
 // ScanInfrastructure reads /proc/net/arp and pings all non-user devices in parallel.
 func ScanInfrastructure(activeMacs map[string]bool, customNames map[string]string, customIPs map[string]string) []Device {
-	lan := config.LANInterface
-
-	data, err := os.ReadFile("/proc/net/arp")
-	if err != nil {
-		return nil
-	}
+	macToIP := network.ARPSnapshot()
 
 	var candidates []Device
-	lines := strings.Split(string(data), "\n")
-	for _, line := range lines[1:] {
-		parts := strings.Fields(line)
-		if len(parts) < 6 {
-			continue
-		}
-		ip, mac, iface := parts[0], strings.ToLower(parts[3]), parts[5]
-		if iface != lan || mac == "00:00:00:00:00:00" {
-			continue
-		}
+	for mac, ip := range macToIP {
 		if activeMacs[mac] {
 			continue
 		}
@@ -105,7 +91,11 @@ func ScanInfrastructure(activeMacs map[string]bool, customNames map[string]strin
 
 		displayName, _ := GetVendorInfo(mac, ip)
 		upper := strings.ToUpper(displayName)
-		phoneKeywords := []string{"NAM", "OPPO", "VIVO", "REALME", "IPHONE", "GALAXY", "XIAOMI", "POCO", "REDMI", "ANDROID"}
+		phoneKeywords := []string{
+			"NAM", "OPPO", "VIVO", "REALME", "IPHONE", "GALAXY", "XIAOMI", 
+			"POCO", "REDMI", "ANDROID", "ITEL", "TECNO", "INFINIX", "ZTE", 
+			"HONOR", "HUAWEI", "SAMSUNG", "APPLE", "IPAD",
+		}
 		isPhone := false
 		for _, kw := range phoneKeywords {
 			if strings.Contains(upper, kw) {
@@ -168,15 +158,9 @@ func ScanInfrastructure(activeMacs map[string]bool, customNames map[string]strin
 
 // GetMACFromIP looks up a MAC address in /proc/net/arp by IP.
 func GetMACFromIP(ip string) string {
-	data, err := os.ReadFile("/proc/net/arp")
-	if err != nil {
-		return "00:00:00:00:00:00"
-	}
-	for _, line := range strings.Split(string(data), "\n") {
-		parts := strings.Fields(line)
-		if len(parts) > 3 && parts[0] == ip {
-			return parts[3]
-		}
+	mac := network.GetMACByIP(ip)
+	if mac != "" {
+		return mac
 	}
 	return "00:00:00:00:00:00"
 }

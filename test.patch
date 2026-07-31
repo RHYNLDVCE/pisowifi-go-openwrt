@@ -1,0 +1,66 @@
+--- internal/infrastructure/scanner.go
++++ internal/infrastructure/scanner.go
+@@ -82,23 +82,20 @@
+ func ScanInfrastructure(activeMacs map[string]bool, customNames map[string]string, customIPs map[string]string) []Device {
+ 	lan := config.LANInterface
+ 
++	macToIP := make(map[string]string)
++	for mac, ip := range network.ARPSnapshot() {
++		macToIP[mac] = ip
++	}
++
+ 	data, err := os.ReadFile("/proc/net/arp")
+-	if err != nil {
+-		return nil
+-	}
+-
+-	var candidates []Device
+-	lines := strings.Split(string(data), "\n")
+-	for _, line := range lines[1:] {
+-		parts := strings.Fields(line)
+-		if len(parts) < 6 {
+-			continue
+-		}
+-		ip, mac, iface := parts[0], strings.ToLower(parts[3]), parts[5]
+-		if iface != lan || mac == "00:00:00:00:00:00" {
+-			continue
++	if err == nil {
++		lines := strings.Split(string(data), "\n")
++		for _, line := range lines[1:] {
++			parts := strings.Fields(line)
++			if len(parts) >= 6 {
++				ip, mac, iface := parts[0], strings.ToLower(parts[3]), parts[5]
++				if iface == lan && mac != "00:00:00:00:00:00" {
++					macToIP[mac] = ip
++				}
++			}
+ 		}
++	}
++
++	var candidates []Device
++	for mac, ip := range macToIP {
+ 		if activeMacs[mac] {
+ 			continue
+ 		}
+@@ -107,7 +104,10 @@
+ 
+ 		displayName, _ := GetVendorInfo(mac, ip)
+ 		upper := strings.ToUpper(displayName)
+-		phoneKeywords := []string{"NAM", "OPPO", "VIVO", "REALME", "IPHONE", "GALAXY", "XIAOMI", "POCO", "REDMI", "ANDROID"}
++		phoneKeywords := []string{
++			"NAM", "OPPO", "VIVO", "REALME", "IPHONE", "GALAXY", "XIAOMI", 
++			"POCO", "REDMI", "ANDROID", "ITEL", "TECNO", "INFINIX", "ZTE", 
++			"HONOR", "HUAWEI", "SAMSUNG", "APPLE", "IPAD",
++		}
+ 		isPhone := false
+ 		for _, kw := range phoneKeywords {
+@@ -169,6 +169,10 @@
+ 
+ // GetMACFromIP looks up a MAC address in /proc/net/arp by IP.
+ func GetMACFromIP(ip string) string {
++	if mac := network.GetMACByIP(ip); mac != "" {
++		return mac
++	}
+ 	data, err := os.ReadFile("/proc/net/arp")
+ 	if err != nil {
+ 		return "00:00:00:00:00:00"
