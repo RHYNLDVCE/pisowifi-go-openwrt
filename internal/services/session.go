@@ -8,6 +8,7 @@ import (
 	"pisowifi/internal/config"
 	"pisowifi/internal/db"
 	"pisowifi/internal/hardware"
+	"pisowifi/internal/logger"
 	"pisowifi/internal/network"
 	"pisowifi/internal/state"
 )
