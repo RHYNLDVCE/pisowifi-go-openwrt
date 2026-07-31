@@ -187,14 +187,6 @@ add chain inet filter forward { type filter hook forward priority filter; policy
 add table ip pisowifi
 flush table ip pisowifi
 
-# Drop ALL IPv6 traffic to prevent captive portal bypass via IPv6
-add table ip6 pisowifi_ipv6
-flush table ip6 pisowifi_ipv6
-table ip6 pisowifi_ipv6 {
-    chain filter_forward {
-        type filter hook forward priority filter; policy drop;
-    }
-}
 
 table ip pisowifi {
     set authorized_users {
@@ -234,22 +226,25 @@ table ip pisowifi {
 
     chain filter_forward {
         type filter hook forward priority filter; policy drop;
-        ct state established,related accept
         
         # 1. Allow the Orange Pi (10.0.0.2) full internet access
         iifname "${LAN}" ip saddr 10.0.0.2 accept
         oifname "${LAN}" ip daddr 10.0.0.2 accept
 
-        # 2. Allow authorized users
+        # 2. EXPLICIT DROP: Kill active connections for unauthorized users instantly.
+        # Drops any LAN traffic from unauthorized MACs unless it's DNS (53) or going to Orange Pi.
+        iifname "${LAN}" ether saddr != @authorized_users ip daddr != 10.0.0.2 udp dport != 53 tcp dport != 53 drop
+        
+        # 3. Accept established/related (for authorized users and Orange Pi)
+        ct state established,related accept
+
+        # 4. Allow authorized users
         iifname "${LAN}" ether saddr @authorized_users accept
         oifname "${LAN}" ether daddr @authorized_users accept
         
-        # 3. Allow DNS for everyone
+        # 5. Allow DNS for everyone
         iifname "${LAN}" udp dport 53 accept
         iifname "${LAN}" tcp dport 53 accept
-        
-        # 4. Drop HTTPS for unauthorized users (prevents timeouts)
-        iifname "${LAN}" ether saddr != @authorized_users tcp dport 443 drop
     }
 
     chain nat_prerouting {
@@ -263,10 +258,6 @@ table ip pisowifi {
         # returns the real client IP. OrangePi uses it to look up MAC from
         # its ARP cache (populated by the DHCP hook via MQTT).
         iifname "${LAN}" ip daddr 10.0.0.1 tcp dport 80 dnat to 10.0.0.2:80
-
-        # Authorized users: send DNS to Cloudflare
-        iifname "${LAN}" ether saddr @authorized_users udp dport 53 dnat to 1.1.1.1:53
-        iifname "${LAN}" ether saddr @authorized_users tcp dport 53 dnat to 1.1.1.1:53
         
         # Unauthorized users: redirect DNS to router
         iifname "${LAN}" ether saddr != @authorized_users udp dport 53 dnat to 10.0.0.1:53
@@ -274,6 +265,7 @@ table ip pisowifi {
         
         # Unauthorized users: intercept HTTP (e.g. captive portal checks) and DNAT to Orange Pi
         iifname "${LAN}" ether saddr != @authorized_users ip daddr != { 10.0.0.1, 10.0.0.2, 10.0.0.3 } tcp dport 80 dnat to 10.0.0.2:80
+    }
 
     chain nat_postrouting {
         type nat hook postrouting priority srcnat; policy accept;
@@ -400,13 +392,6 @@ apply_failsafe_block() {
 add table ip pisowifi
 flush table ip pisowifi
 
-add table ip6 pisowifi_ipv6
-flush table ip6 pisowifi_ipv6
-table ip6 pisowifi_ipv6 {
-    chain filter_forward {
-        type filter hook forward priority filter; policy drop;
-    }
-}
 
 table ip pisowifi {
     set authorized_users {
@@ -417,14 +402,14 @@ table ip pisowifi {
     }
     chain filter_forward {
         type filter hook forward priority filter; policy drop;
-        ct state established,related accept
         iifname "${LAN}" ip saddr 10.0.0.2 accept
         oifname "${LAN}" ip daddr 10.0.0.2 accept
+        iifname "${LAN}" ether saddr != @authorized_users ip daddr != 10.0.0.2 udp dport != 53 tcp dport != 53 drop
+        ct state established,related accept
         iifname "${LAN}" ether saddr @authorized_users accept
         oifname "${LAN}" ether daddr @authorized_users accept
         iifname "${LAN}" udp dport 53 accept
         iifname "${LAN}" tcp dport 53 accept
-        iifname "${LAN}" ether saddr != @authorized_users tcp dport 443 drop
     }
     chain nat_prerouting {
         type nat hook prerouting priority dstnat; policy accept;
@@ -434,6 +419,7 @@ table ip pisowifi {
         iifname "${LAN}" ip daddr 10.0.0.1 tcp dport 80 dnat to 10.0.0.2:80
         iifname "${LAN}" ip daddr 10.0.0.1 tcp dport 80 dnat to 10.0.0.2:80
         iifname "${LAN}" ether saddr != @authorized_users ip daddr != { 10.0.0.1, 10.0.0.2, 10.0.0.3 } tcp dport 80 dnat to 10.0.0.2:80
+    }
 }
 EOF
 }

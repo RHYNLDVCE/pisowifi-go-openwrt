@@ -105,11 +105,15 @@ func ReloadFirewall() {
 // AllowUser tells the router to add the MAC to the authorized_users nftables set
 // and (if IP is known) apply the configured speed limit via tc.
 func AllowUser(mac, ip string) {
-	if err := mqttcmd.AllowUser(mac, ip); err != nil {
+	resolvedIP := ip
+	if resolvedIP == "" {
+		resolvedIP = GetIPByMAC(mac)
+	}
+	if err := mqttcmd.AllowUser(mac, resolvedIP); err != nil {
 		logger.SystemLog("[FIREWALL] AllowUser MQTT error for " + mac + ": " + err.Error())
 	}
-	if ip != "" {
-		ApplySpeedLimit(ip)
+	if resolvedIP != "" {
+		ApplySpeedLimit(resolvedIP)
 	}
 }
 

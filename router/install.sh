@@ -72,6 +72,8 @@ read -r OPI_MAC
 
 if [ -n "$OPI_MAC" ]; then
     echo "Binding $OPI_MAC to 10.0.0.2..."
+    # Clear any existing static lease for 10.0.0.2 to prevent dnsmasq crash loops
+    while uci -q delete dhcp.@host[0]; do :; done
     uci add dhcp host
     uci set dhcp.@host[-1].mac="$OPI_MAC"
     uci set dhcp.@host[-1].ip="10.0.0.2"
