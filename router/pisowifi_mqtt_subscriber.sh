@@ -46,19 +46,40 @@ get_uid() {
 dump_arp_table() {
     logger -t pisowifi "[ARP] Dumping ARP table to Orange Pi..."
     
-    # We use awk to format ARP entries as JSON, skipping the router and Orange Pi IP
-    # We also grab hostnames from dnsmasq if available
-    awk 'BEGIN{
-        while((getline < "/tmp/dhcp.leases") > 0) {
-            hostnames[$2] = $4
+    # We merge data from /tmp/dhcp.leases and /proc/net/arp.
+    # This ensures devices with static IPs (ARP only) and access points with long leases (DHCP only) are both sent.
+    awk '
+    # Process /tmp/dhcp.leases
+    FILENAME=="/tmp/dhcp.leases" {
+        mac=tolower($2)
+        ip=$3
+        hn=$4
+        if(hn=="*") hn=""
+        leases[mac]=ip
+        hostnames[mac]=hn
+    }
+    # Process /proc/net/arp
+    FILENAME=="/proc/net/arp" {
+        if(FNR>1 && $3=="0x2" && $1!="10.0.0.1" && $1!="10.0.0.2") {
+            mac=tolower($4)
+            arp_ips[mac]=$1
         }
     }
-    NR>1 && $3=="0x2" && $1!="10.0.0.1" && $1!="10.0.0.2" {
-        mac=tolower($4)
-        hn=hostnames[mac]
-        if(hn=="*") hn=""
-        print "{\"mac\":\""mac"\",\"ip\":\""$1"\",\"action\":\"add\",\"hostname\":\""hn"\"}"
-    }' /proc/net/arp > /tmp/arp_dump.jsonl
+    END {
+        # First output everything in the ARP table
+        for(mac in arp_ips) {
+            ip = arp_ips[mac]
+            hn = hostnames[mac]
+            print "{\"mac\":\""mac"\",\"ip\":\""ip"\",\"action\":\"add\",\"hostname\":\""hn"\"}"
+            processed[mac] = 1
+        }
+        # Then output anything in DHCP leases that wasn'\''t in the ARP table
+        for(mac in leases) {
+            if(!processed[mac] && leases[mac]!="10.0.0.1" && leases[mac]!="10.0.0.2") {
+                print "{\"mac\":\""mac"\",\"ip\":\""leases[mac]"\",\"action\":\"add\",\"hostname\":\""hostnames[mac]"\"}"
+            }
+        }
+    }' /tmp/dhcp.leases /proc/net/arp > /tmp/arp_dump.jsonl
     
     local count=$(wc -l < /tmp/arp_dump.jsonl)
     if [ "$count" -gt 0 ]; then

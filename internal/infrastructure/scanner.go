@@ -3,12 +3,10 @@ package infrastructure
 import (
 	"fmt"
 	"net"
-	"os"
 	"os/exec"
 	"strings"
 	"sync"
 
-	"pisowifi/internal/config"
 	"pisowifi/internal/network"
 	"pisowifi/internal/state"
 )
