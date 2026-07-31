@@ -1122,7 +1122,7 @@
             if (d.result === "success") {
                 document.getElementById("connectionStatus").innerText = "Connection Established!";
                 showToast("Connected! Validating...", "success");
-                setTimeout(() => { window.location.reload(); }, 1500);
+                setTimeout(() => { window.location.reload(); }, 500);
             } else if (d.result === "blocked") {
                 updateUI({ status: "paused", time_remaining: localTime, is_busy: false, balance: 0 });
                 showToast("Access Denied: You are BLOCKED. Contact Owner.", "error");

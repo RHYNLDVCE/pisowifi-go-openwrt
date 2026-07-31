@@ -218,14 +218,14 @@ table ip pisowifi {
     }
 
     chain filter_input {
-        type filter hook input priority filter; policy accept;
+        type filter hook input priority -1; policy accept;
         ct state related,established accept
         iifname "${LAN}" udp sport 67-68 udp dport 67-68 accept
         iifname "lo" accept
     }
 
     chain filter_forward {
-        type filter hook forward priority filter; policy drop;
+        type filter hook forward priority -1; policy drop;
         
         # 1. Allow the Orange Pi (10.0.0.2) full internet access
         iifname "${LAN}" ip saddr 10.0.0.2 accept
@@ -233,7 +233,8 @@ table ip pisowifi {
 
         # 2. EXPLICIT DROP: Kill active connections for unauthorized users instantly.
         # Drops any LAN traffic from unauthorized MACs unless it's DNS (53) or going to Orange Pi.
-        iifname "${LAN}" ether saddr != @authorized_users ip daddr != 10.0.0.2 udp dport != 53 tcp dport != 53 drop
+        iifname "${LAN}" ether saddr != @authorized_users ip daddr != 10.0.0.2 udp dport != 53 drop
+        iifname "${LAN}" ether saddr != @authorized_users ip daddr != 10.0.0.2 tcp dport != 53 drop
         
         # 3. Accept established/related (for authorized users and Orange Pi)
         ct state established,related accept
@@ -401,10 +402,11 @@ table ip pisowifi {
         counter
     }
     chain filter_forward {
-        type filter hook forward priority filter; policy drop;
+        type filter hook forward priority -1; policy drop;
         iifname "${LAN}" ip saddr 10.0.0.2 accept
         oifname "${LAN}" ip daddr 10.0.0.2 accept
-        iifname "${LAN}" ether saddr != @authorized_users ip daddr != 10.0.0.2 udp dport != 53 tcp dport != 53 drop
+        iifname "${LAN}" ether saddr != @authorized_users ip daddr != 10.0.0.2 udp dport != 53 drop
+        iifname "${LAN}" ether saddr != @authorized_users ip daddr != 10.0.0.2 tcp dport != 53 drop
         ct state established,related accept
         iifname "${LAN}" ether saddr @authorized_users accept
         oifname "${LAN}" ether daddr @authorized_users accept

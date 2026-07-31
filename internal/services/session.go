@@ -71,8 +71,7 @@ func ConnectUser(mac string) string {
 		db.SyncUser(toDBRecord(mac, u))
 	}
 
-	// Give the portal 1 second to reflect the new state before sending WS update
-	time.Sleep(1 * time.Second)
+
 
 	if u, ok := state.Users.Get(mac); ok {
 		state.Manager.Send(mac, map[string]any{

@@ -101,7 +101,11 @@ if [ -f "./dhcp_hook.sh" ]; then
     mkdir -p /etc/dnsmasq.d
     cp ./dhcp_hook.sh /etc/dnsmasq.d/pisowifi_dhcp_hook.sh
     chmod +x /etc/dnsmasq.d/pisowifi_dhcp_hook.sh
-    grep -q 'dhcp-script=/etc/dnsmasq.d/pisowifi_dhcp_hook.sh' /etc/dnsmasq.conf || echo 'dhcp-script=/etc/dnsmasq.d/pisowifi_dhcp_hook.sh' >> /etc/dnsmasq.conf
+    
+    # Use proper OpenWrt UCI to set the script to prevent dnsmasq crashes
+    uci set dhcp.@dnsmasq[0].dhcpscript='/etc/dnsmasq.d/pisowifi_dhcp_hook.sh'
+    uci commit dhcp
+    
     /etc/init.d/dnsmasq restart
 fi
 

@@ -18,6 +18,8 @@
 # Dependencies: mosquitto-client (provides mosquitto_pub)
 # The mosquitto broker runs on the router itself at 127.0.0.1:1883.
 
+export PATH="/bin:/sbin:/usr/bin:/usr/sbin"
+
 ACTION="$1"
 MAC="$2"
 IP="$3"
@@ -33,7 +35,7 @@ if [ -z "$MAC" ] || [ -z "$IP" ]; then
 fi
 
 # Normalise MAC to lowercase
-MAC=$(echo "$MAC" | tr '[:upper:]' '[:lower:]')
+MAC=$(echo "$MAC" | /bin/busybox tr '[:upper:]' '[:lower:]')
 
 # Map dnsmasq action → pisowifi action
 # "add"  = new lease granted
@@ -55,7 +57,7 @@ esac
 PAYLOAD="{\"mac\":\"${MAC}\",\"ip\":\"${IP}\",\"action\":\"${EVENT}\",\"hostname\":\"${HOSTNAME}\"}"
 
 # Publish to MQTT broker (non-blocking, QoS 1, retained so late subscribers get it)
-mosquitto_pub \
+/usr/bin/mosquitto_pub \
     -h "$MQTT_HOST" \
     -p "$MQTT_PORT" \
     -t "$MQTT_TOPIC" \
@@ -64,4 +66,4 @@ mosquitto_pub \
     -m "$PAYLOAD" \
     2>/dev/null &
 
-logger -t pisowifi "[DHCP] $EVENT $MAC → $IP"
+/bin/busybox logger -t pisowifi "[DHCP] $EVENT $MAC → $IP"
