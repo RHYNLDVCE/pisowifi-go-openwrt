@@ -45,35 +45,25 @@ get_uid() {
 # gets them immediately even if it subscribes slightly late.
 dump_arp_table() {
     logger -t pisowifi "[ARP] Dumping ARP table to Orange Pi..."
-    local count=0
-    # /proc/net/arp columns: IP HWtype Flags HWaddr Mask Device
-    # Skip the header line, skip incomplete (Flags != 0x2) entries
-    while read -r ip hwtype flags mac mask dev; do
-        # Skip header row
-        [ "$ip" = "IP" ] && continue
-        # Skip incomplete/proxy entries (flags must be 0x2 = complete)
-        [ "$flags" != "0x2" ] && continue
-        # Skip the Orange Pi's own entry and the router itself
-        [ "$ip" = "10.0.0.1" ] && continue
-        [ "$ip" = "10.0.0.2" ] && continue
-        # Normalise MAC to lowercase
-        mac=$(echo "$mac" | tr '[:upper:]' '[:lower:]')
-        
-        # Look up hostname from dnsmasq leases
-        hostname=$(awk -v m="$mac" 'tolower($2) == m {print $4}' /tmp/dhcp.leases 2>/dev/null)
-        [ "$hostname" = "*" ] && hostname=""
-        
-        PAYLOAD="{\"mac\":\"${mac}\",\"ip\":\"${ip}\",\"action\":\"add\",\"hostname\":\"${hostname}\"}"
-        mosquitto_pub \
-            -h "$MQTT_HOST" \
-            -p "$MQTT_PORT" \
-            -t "pisowifi/arp" \
-            -q 1 \
-            -r \
-            -m "$PAYLOAD" \
-            2>/dev/null
-        count=$(( count + 1 ))
-    done < /proc/net/arp
+    
+    # We use awk to format ARP entries as JSON, skipping the router and Orange Pi IP
+    # We also grab hostnames from dnsmasq if available
+    awk 'BEGIN{
+        while((getline < "/tmp/dhcp.leases") > 0) {
+            hostnames[$2] = $4
+        }
+    }
+    NR>1 && $3=="0x2" && $1!="10.0.0.1" && $1!="10.0.0.2" {
+        mac=tolower($4)
+        hn=hostnames[mac]
+        if(hn=="*") hn=""
+        print "{\"mac\":\""mac"\",\"ip\":\""$1"\",\"action\":\"add\",\"hostname\":\""hn"\"}"
+    }' /proc/net/arp > /tmp/arp_dump.jsonl
+    
+    local count=$(wc -l < /tmp/arp_dump.jsonl)
+    if [ "$count" -gt 0 ]; then
+        mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" -r -t "pisowifi/arp" -l < /tmp/arp_dump.jsonl 2>/dev/null
+    fi
     logger -t pisowifi "[ARP] Dumped $count entries to Orange Pi."
 }
 
@@ -436,6 +426,9 @@ logger -t pisowifi "[MQTT] Subscriber starting on topics: $MQTT_TOPICS"
 mosquitto_sub \
     -h "$MQTT_HOST" \
     -p "$MQTT_PORT" \
+    -i "pisowifi_router_sub" \
+    -c \
+    -q 1 \
     -t "$MQTT_TOPICS" \
     --nodelay \
     -v \

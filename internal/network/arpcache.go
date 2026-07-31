@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"strings"
 	"sync"
+	"time"
 
 	paho "github.com/eclipse/paho.mqtt.golang"
 
@@ -55,9 +56,22 @@ func InitARPCache() {
 	RequestARPSync()
 }
 
+var (
+	lastSyncTime time.Time
+	syncMu       sync.Mutex
+)
+
 // RequestARPSync publishes pisowifi/arp/request so the router dumps its
-// current ARP table. Safe to call multiple times (e.g. on reconnect).
+// current ARP table. Rate limited to once every 10 seconds.
 func RequestARPSync() {
+	syncMu.Lock()
+	if time.Since(lastSyncTime) < 10*time.Second {
+		syncMu.Unlock()
+		return
+	}
+	lastSyncTime = time.Now()
+	syncMu.Unlock()
+
 	if err := mqttcmd.Publish("pisowifi/arp/request", map[string]string{"action": "dump"}); err != nil {
 		logger.SystemLog("[ARP] Failed to publish arp/request: " + err.Error())
 	}

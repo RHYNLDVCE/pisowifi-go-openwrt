@@ -25,7 +25,7 @@ MAC="$2"
 IP="$3"
 HOSTNAME="$4"
 
-MQTT_HOST="127.0.0.1"
+MQTT_HOST="10.0.0.1"
 MQTT_PORT="1883"
 MQTT_TOPIC="pisowifi/arp"
 
@@ -34,8 +34,7 @@ if [ -z "$MAC" ] || [ -z "$IP" ]; then
     exit 0
 fi
 
-# Normalise MAC to lowercase
-MAC=$(echo "$MAC" | /bin/busybox tr '[:upper:]' '[:lower:]')
+# Normalise MAC to lowercase (dnsmasq already provides lowercase, so just pass it through)
 
 # Map dnsmasq action → pisowifi action
 # "add"  = new lease granted
@@ -66,4 +65,3 @@ PAYLOAD="{\"mac\":\"${MAC}\",\"ip\":\"${IP}\",\"action\":\"${EVENT}\",\"hostname
     -m "$PAYLOAD" \
     2>/dev/null &
 
-/bin/busybox logger -t pisowifi "[DHCP] $EVENT $MAC → $IP"
