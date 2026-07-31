@@ -25,7 +25,8 @@ apk add \
     kmod-sched-core \
     kmod-ifb \
     conntrack \
-    kmod-nf-conntrack
+    kmod-nf-conntrack \
+    miniupnpd
 
 echo ""
 echo "Configuring LAN Subnet to 10.0.0.1/16..."
@@ -72,12 +73,11 @@ read -r OPI_MAC
 
 if [ -n "$OPI_MAC" ]; then
     echo "Binding $OPI_MAC to 10.0.0.2..."
-    # Clear any existing static lease for 10.0.0.2 to prevent dnsmasq crash loops
-    while uci -q delete dhcp.@host[0]; do :; done
-    uci add dhcp host
-    uci set dhcp.@host[-1].mac="$OPI_MAC"
-    uci set dhcp.@host[-1].ip="10.0.0.2"
-    uci set dhcp.@host[-1].name="orangepi"
+    # Use a named section (orangepi) so we don't accidentally delete other static leases
+    uci set dhcp.orangepi=host
+    uci set dhcp.orangepi.mac="$OPI_MAC"
+    uci set dhcp.orangepi.ip="10.0.0.2"
+    uci set dhcp.orangepi.name="orangepi"
     uci commit dhcp
     echo "Static lease saved!"
 else
@@ -119,9 +119,9 @@ if [ -f "./pisowifi_mqtt_subscriber.sh" ] && [ -f "./pisowifi_mqtt.init" ]; then
     cp ./pisowifi_mqtt.init /etc/init.d/pisowifi_mqtt
     chmod +x /etc/init.d/pisowifi_mqtt
     
-    echo "Enabling and starting the background service..."
+    echo "Enabling and restarting the background service..."
     /etc/init.d/pisowifi_mqtt enable
-    /etc/init.d/pisowifi_mqtt start
+    /etc/init.d/pisowifi_mqtt restart
     echo "Service is now running!"
 else
     echo "Warning: 'pisowifi_mqtt_subscriber.sh' or 'pisowifi_mqtt.init' not found in this folder."
