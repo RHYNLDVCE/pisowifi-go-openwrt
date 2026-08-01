@@ -1215,7 +1215,7 @@
         } else if (data.status === "pending_pause") {
             statusBadge.innerText = "PAUSING...";
             badgeContainer.style.background = "rgba(156, 163, 175, 0.2)";
-            connStatus.innerText = "Applying firewall rules...";
+            connStatus.innerText = "Updating connection...";
             connStatus.style.color = "var(--text-sub)";
             btnAction.innerText = "PLEASE WAIT";
             btnAction.className = "btn btn-disabled";
@@ -1223,7 +1223,7 @@
         } else if (data.status === "pending_connect") {
             statusBadge.innerText = "RESUMING...";
             badgeContainer.style.background = "rgba(156, 163, 175, 0.2)";
-            connStatus.innerText = "Applying firewall rules...";
+            connStatus.innerText = "Updating connection...";
             connStatus.style.color = "var(--text-sub)";
             btnAction.innerText = "PLEASE WAIT";
             btnAction.className = "btn btn-disabled";

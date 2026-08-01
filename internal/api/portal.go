@@ -76,6 +76,7 @@ func portalHome(c *fiber.Ctx) error {
 	if clientMAC == "" {
 		clientMAC = c.Query("mac")
 	}
+	clientMAC = strings.ToLower(strings.TrimSpace(clientMAC))
 
 	if clientMAC == "" {
 		// Ask the router to dump its ARP table, just in case we missed it
@@ -83,7 +84,28 @@ func portalHome(c *fiber.Ctx) error {
 
 		// ARP cache miss - serve a loading page that refreshes to allow time for ARP sync
 		c.Set("Refresh", "2; url=http://10.0.0.1/")
-		return c.Type("html").SendString(`<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta http-equiv="refresh" content="2;url=http://10.0.0.1/"></head><body style="font-family:sans-serif;text-align:center;margin-top:20vh;"><h2>Loading Portal...</h2><p>Please wait a moment while we prepare your connection.</p><script>setTimeout(function(){window.location.reload();}, 2000);</script></body></html>`)
+		return c.Type("html").SendString(`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="refresh" content="2;url=http://10.0.0.1/">
+    <title>Loading Portal</title>
+    <style>
+        body { margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #0f172a; color: #f8fafc; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        .spinner { width: 44px; height: 44px; border: 4px solid rgba(255, 255, 255, 0.1); border-left-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 24px; }
+        h2 { margin: 0 0 8px 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px; }
+        p { margin: 0; font-size: 14px; color: #94a3b8; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="spinner"></div>
+    <h2>Loading Portal...</h2>
+    <p>Preparing your connection</p>
+    <script>setTimeout(function(){window.location.reload();}, 2000);</script>
+</body>
+</html>`)
 	}
 
 	if _, ok := state.Users.Get(clientMAC); !ok {
@@ -166,6 +188,7 @@ func portalStatus(c *fiber.Ctx) error {
 		// the ARP cache was populated (rare race on first connect).
 		clientMAC = c.Query("mac")
 	}
+	clientMAC = strings.ToLower(strings.TrimSpace(clientMAC))
 	cfg := config.Get()
 
 	user := &state.UserRecord{Status: "new"}
@@ -214,7 +237,7 @@ func portalWS(c *websocket.Conn) {
 	// The MAC in the URL (/ws/:mac) was rendered server-side by the template
 	// (derived from the ARP cache), so it is already authoritative.
 	// We additionally validate it against the current source IP as a sanity check.
-	mac := c.Params("mac")
+	mac := strings.ToLower(strings.TrimSpace(c.Params("mac")))
 	state.Manager.Connect(mac, c)
 	defer state.Manager.Disconnect(mac)
 
@@ -313,10 +336,32 @@ func rewardsPage(c *fiber.Ctx) error {
 		// Fallback: accept ?mac= in case of ARP cache miss
 		mac = c.Query("mac")
 	}
+	mac = strings.ToLower(strings.TrimSpace(mac))
 	if mac == "" {
 		network.RequestARPSync()
 		c.Set("Refresh", "2; url=/rewards")
-		return c.Type("html").SendString(`<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta http-equiv="refresh" content="2;url=/rewards"></head><body style="font-family:sans-serif;text-align:center;margin-top:20vh;"><h2>Loading Rewards...</h2><p>Please wait a moment.</p><script>setTimeout(function(){window.location.reload();}, 2000);</script></body></html>`)
+		return c.Type("html").SendString(`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="refresh" content="2;url=/rewards">
+    <title>Loading Rewards</title>
+    <style>
+        body { margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #0f172a; color: #f8fafc; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        .spinner { width: 44px; height: 44px; border: 4px solid rgba(255, 255, 255, 0.1); border-left-color: #10b981; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 24px; }
+        h2 { margin: 0 0 8px 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px; }
+        p { margin: 0; font-size: 14px; color: #94a3b8; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="spinner"></div>
+    <h2>Loading Rewards...</h2>
+    <p>Preparing your account</p>
+    <script>setTimeout(function(){window.location.reload();}, 2000);</script>
+</body>
+</html>`)
 	}
 	cfg := config.Get()
 
@@ -424,10 +469,10 @@ func redeemVoucher(c *fiber.Ctx) error {
 func resolveMAC(c *fiber.Ctx) string {
 	// Primary: IP → ARP cache (authoritative)
 	if mac := network.GetMACByIP(c.IP()); mac != "" {
-		return mac
+		return strings.ToLower(strings.TrimSpace(mac))
 	}
 	// Fallback: accept ?mac= only for brand-new devices not yet in ARP cache
-	return c.Query("mac")
+	return strings.ToLower(strings.TrimSpace(c.Query("mac")))
 }
 
 func buildBannerList(order []string) []string {
