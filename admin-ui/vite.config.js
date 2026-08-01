@@ -40,6 +40,14 @@ export default defineConfig({
   build: {
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
+      treeshake: {
+        moduleSideEffects: (id, external) => {
+          if (id.includes('registry.js') || id.includes('.bones.json') || id.includes('boneyard-js')) {
+            return true;
+          }
+          return true;
+        }
+      },
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {

@@ -74,6 +74,13 @@ func RegisterAdminRoutes(app *fiber.App) {
 
 	// Catch-all to serve the React SPA index.html for any remaining /admin sub-route
 	admin.Get("/*", func(c *fiber.Ctx) error {
+		path := c.Params("*")
+		
+		// If the browser is asking for PWA files, serve them directly
+		if path == "registerSW.js" || path == "sw.js" || path == "manifest.webmanifest" || strings.HasPrefix(path, "workbox-") {
+			return c.SendFile("./admin-ui/dist/" + path)
+		}
+		
 		return c.SendFile("./admin-ui/dist/index.html")
 	})
 }
