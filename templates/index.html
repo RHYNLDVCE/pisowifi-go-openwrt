@@ -1156,8 +1156,8 @@
                 // We schedule manual fetchStatus polls to heal the UI because we won't get the WS 'paused' message.
                 // These run independently. The very first one that catches the new 'paused' state will update the UI.
                 setTimeout(fetchStatus, 500);
-                setTimeout(fetchStatus, 1500);
-                setTimeout(fetchStatus, 3000);
+                setTimeout(fetchStatus, 1000);
+                setTimeout(fetchStatus, 2000);
             }
         }).catch(err => {
             updateUI({ status: "connected", time_remaining: localTime, is_busy: false, balance: 0 });
