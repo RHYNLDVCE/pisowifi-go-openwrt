@@ -783,6 +783,7 @@
     let currentStatus = "loading";
     let ws = null;
     let fastPollTimer = null;
+    let lastWsUpdate = 0;
 
     // --- RESTORE FROM CACHE ---
     const cachedTime = localStorage.getItem("piso_time_" + mac);
@@ -805,10 +806,13 @@
 
         ws.onopen = () => { console.log("WS Connected"); fetchStatus(); };
         ws.onmessage = (event) => {
-            var data = JSON.parse(event.data);
+            let data = JSON.parse(event.data);
             if (data.type === "sync") {
-                localTime = data.time_remaining;
-                updateTimerDisplay(localTime);  // Immediately snap display to backend's authoritative time
+                lastWsUpdate = Date.now(); // Record when we got fresh WS data
+                if (data.time_remaining !== undefined) localTime = data.time_remaining;
+                if (data.balance !== undefined) {
+                    document.getElementById("balanceDisplay").innerText = data.balance;
+                }
                 updateUI(data);
             } else if (data.type === "slot_opened") {
                 localTime = data.time_remaining;
@@ -861,6 +865,11 @@
             // Append current time to create a unique URL, bypassing cache
             let res = await fetch(`/status?mac=${mac}&_t=${Date.now()}`);
             let data = await res.json();
+            
+            // If we received a fresh WebSocket update within the last 2 seconds, 
+            // ignore this HTTP fetch to prevent stale state from overwriting it.
+            if (Date.now() - lastWsUpdate < 2000) return;
+
             localTime = data.time_remaining;
 
             if (data.slot_seconds > 0 && !isModalOpen) {
@@ -1176,21 +1185,11 @@
         });
     }
 
-    let transientTimer = null;
     function updateUI(data) {
         currentStatus = data.status;
         localStorage.setItem("piso_time_" + mac, data.time_remaining);
         localStorage.setItem("piso_status_" + mac, data.status);
 
-        // Prevent getting stuck in a transient state if WS message is missed or overwritten by a stale fetch
-        if (currentStatus === "pending_pause" || currentStatus === "pending_connect") {
-            if (!transientTimer) transientTimer = setInterval(fetchStatus, 1000);
-        } else {
-            if (transientTimer) {
-                clearInterval(transientTimer);
-                transientTimer = null;
-            }
-        }
         if (data.coin_rates) ratesStr = data.coin_rates;
 
         let bal = data.balance !== undefined ? data.balance : 0;
