@@ -262,8 +262,10 @@ export default function App() {
     <SkeletonProvider
       config={{
         animation: "animation-1",
-        borderRadius: "8px",
-        animationSpeed: 3,
+        background: "#e5e7eb",
+        borderRadius: "6px",
+        animationSpeed: 2,
+        exceptTags: ["div", "form", "table", "thead", "tbody", "tr", "td", "th", "ul", "li", "svg", "nav", "header", "main", "aside", "section", "article"]
       }}>
       <BrowserRouter>
          <Layout>
