@@ -85,7 +85,11 @@ export default function Vouchers() {
     setCurrentPage(1);
   };
 
-  const sortedVouchers = [...(data?.vouchers || Array(5).fill({ code: 'dummy', type: 'time', value: '10', status: 'active', created_by: 'admin', created_at: 0 }))]
+  const displayVouchers = loading && (!data || !data.vouchers || data.vouchers.length === 0) 
+    ? Array(5).fill({ code: '...', type: 'time', value: '10', status: 'active', created_by: '...', created_at: 0 })
+    : (data?.vouchers || []);
+
+  const sortedVouchers = [...displayVouchers]
     .filter(v => 
       v.code.toLowerCase().includes(search.toLowerCase()) || 
       v.created_by.toLowerCase().includes(search.toLowerCase()) || 
@@ -111,7 +115,7 @@ export default function Vouchers() {
   
   const paginatedVouchers = sortedVouchers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  if (!loading && (!data || !data.vouchers)) {
+  if (!loading && !data) {
     return <div className="text-red-500">Error loading data.</div>;
   }
 

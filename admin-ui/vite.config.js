@@ -11,6 +11,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
+      useCredentials: true,
       manifest: {
         name: 'PisoWifi Admin',
         short_name: 'PisoAdmin',
