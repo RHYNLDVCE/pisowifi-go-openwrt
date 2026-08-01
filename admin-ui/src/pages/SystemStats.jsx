@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Cpu, MemoryStick, HardDrive, Network, Timer, ArrowDownToLine, ArrowUpToLine, Usb, ArrowRightLeft, Server, Router } from 'lucide-react';
+import { Cpu, MemoryStick, HardDrive, Network, Timer, ArrowDownToLine, ArrowUpToLine, Usb, ArrowRightLeft, Server, Router, Globe } from 'lucide-react';
 
 export default function SystemStats() {
   const [activeTab, setActiveTab] = useState('orangepi');
@@ -165,7 +165,7 @@ export default function SystemStats() {
            {/* WAN Node */}
            <div className="flex-1 w-full flex items-center gap-4 relative z-10 bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 p-4 rounded shadow-sm">
              <div className="w-12 h-12 text-gray-900 dark:text-white rounded flex items-center justify-center shrink-0">
-               <Usb size={24} />
+               <Globe size={24} />
              </div>
              <div>
                <div className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">WAN Access</div>
