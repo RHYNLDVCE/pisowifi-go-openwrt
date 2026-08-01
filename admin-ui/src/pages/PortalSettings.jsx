@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Save, Activity, MonitorSmartphone, Volume2, Timer, Image, Trash2, Upload, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../components/ConfirmModal';
-import PageSkeleton from '../components/PageSkeleton';
+import { SkeletonWrapper } from 'react-skeletonify';
+
 export default function PortalSettings() {
   const [data, setData] = useState(null);
   const [banners, setBanners] = useState([]);
@@ -162,11 +163,10 @@ export default function PortalSettings() {
 
   if (!loading && !data) return <div className="text-red-500">Error loading settings.</div>;
 
-  if (loading || !data) return <PageSkeleton type="form" />;
+  const safeData = data || { banner_text: '', banner_link: '', sound_files: [] };
 
   return (
-    <>
-      {data && (
+    <SkeletonWrapper loading={loading}>
         <div className="space-y-6 relative">
           <ConfirmModal 
         isOpen={modalConfig.isOpen}
@@ -281,7 +281,7 @@ export default function PortalSettings() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-zinc-800">
-                {data.sound_files && data.sound_files.map((file, idx) => (
+                {safeData.sound_files && safeData.sound_files.map((file, idx) => (
                   <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-zinc-900/50 transition-colors">
                     <td className="px-6 py-3 font-mono text-sm whitespace-nowrap">{file}</td>
                     <td className="px-6 py-3 text-right whitespace-nowrap">
@@ -309,7 +309,7 @@ export default function PortalSettings() {
                     </td>
                   </tr>
                 ))}
-                {(!data.sound_files || data.sound_files.length === 0) && (
+                {(!safeData.sound_files || safeData.sound_files.length === 0) && (
                   <tr>
                     <td colSpan="2" className="px-6 py-8 text-center text-gray-500 dark:text-gray-400 bg-gray-50/50 dark:bg-zinc-900/20">
                       No custom sounds uploaded yet.
@@ -333,14 +333,14 @@ export default function PortalSettings() {
         <form id="sounds-config-form" onSubmit={handleSaveSettings} className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-1">
             <label className="text-xs font-bold text-gray-500 dark:text-gray-400">Insert Coin Sound (Looping)</label>
-            <select name="sound_insert" defaultValue={data.sound_insert_selected} className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded focus:ring-2 focus:ring-black dark:focus:ring-white outline-none">
-              {data.sound_files && data.sound_files.map(s => <option key={s} value={s}>{s}</option>)}
+            <select name="sound_insert" defaultValue={safeData.sound_insert_selected} className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded focus:ring-2 focus:ring-black dark:focus:ring-white outline-none">
+              {safeData.sound_files && safeData.sound_files.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
           <div className="space-y-1">
             <label className="text-xs font-bold text-gray-500 dark:text-gray-400">Coin Received Sound (Success)</label>
-            <select name="sound_coin" defaultValue={data.sound_coin_selected} className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded focus:ring-2 focus:ring-black dark:focus:ring-white outline-none">
-              {data.sound_files && data.sound_files.map(s => <option key={s} value={s}>{s}</option>)}
+            <select name="sound_coin" defaultValue={safeData.sound_coin_selected} className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded focus:ring-2 focus:ring-black dark:focus:ring-white outline-none">
+              {safeData.sound_files && safeData.sound_files.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
           <div className="col-span-1 md:col-span-2 flex justify-end mt-4 pt-6 border-t border-gray-200 dark:border-zinc-800">
@@ -370,7 +370,7 @@ export default function PortalSettings() {
                 <input 
                   type="number" 
                   name="timeout" 
-                  defaultValue={data.slot_timeout || 60} 
+                  defaultValue={safeData.slot_timeout || 60} 
                   className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
                 />
                 <p className="text-[10px] text-gray-500 mt-1">Time before the physical coin slot accepts another coin.</p>
@@ -436,11 +436,11 @@ export default function PortalSettings() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-gray-500 dark:text-gray-400">Banner Button Text</label>
-                <input type="text" name="banner_text" defaultValue={data.banner_text} placeholder="e.g. Open App" className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded outline-none focus:ring-2 focus:ring-black dark:focus:ring-white" />
+                <input type="text" name="banner_text" defaultValue={safeData.banner_text} placeholder="e.g. Open App" className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded outline-none focus:ring-2 focus:ring-black dark:focus:ring-white" />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-bold text-gray-500 dark:text-gray-400">Banner Button URL</label>
-                <input type="text" name="banner_link" defaultValue={data.banner_link} placeholder="http://..." className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded outline-none focus:ring-2 focus:ring-black dark:focus:ring-white" />
+                <input type="text" name="banner_link" defaultValue={safeData.banner_link} placeholder="http://..." className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded outline-none focus:ring-2 focus:ring-black dark:focus:ring-white" />
               </div>
             </div>
           </div>
@@ -454,7 +454,6 @@ export default function PortalSettings() {
         </div>
       </form>
     </div>
-      )}
-    </>
+    </SkeletonWrapper>
   );
 }

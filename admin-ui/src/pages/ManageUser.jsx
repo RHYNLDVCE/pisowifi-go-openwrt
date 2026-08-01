@@ -4,7 +4,8 @@ import { ArrowLeft, Clock, ShieldBan, Trash2, Check, Activity, Star, ChevronDown
 import toast from 'react-hot-toast';
 import CustomSelect from '../components/CustomSelect';
 import ConfirmModal from '../components/ConfirmModal';
-import PageSkeleton from '../components/PageSkeleton';
+import { SkeletonWrapper } from 'react-skeletonify';
+
 export default function ManageUser() {
   const { mac } = useParams();
   const navigate = useNavigate();
@@ -62,13 +63,11 @@ export default function ManageUser() {
 
   if (!loading && (!data || data.error)) return <div className="text-red-500 font-bold text-xl">User not found.</div>;
 
-  const { user, device_name, time_formatted, history } = data || {};
-
-  if (loading || !data) return <PageSkeleton type="dashboard" />;
+  const safeData = data || { user: { Status: 'connected', IP: '', Points: 0 }, device_name: 'Loading...', time_formatted: '00:00:00', history: [], vouchers: [] };
+  const { user, device_name, time_formatted, history } = safeData;
 
   return (
-    <>
-      {data && !data.error && (
+    <SkeletonWrapper loading={loading}>
         <div className="space-y-6 w-full relative">
 
       <ConfirmModal 
@@ -221,7 +220,7 @@ export default function ManageUser() {
                 <Ticket size={20} className="text-purple-500" /> Vouchers Created
               </h3>
             </div>
-            {data.vouchers && data.vouchers.length > 0 ? (
+            {safeData.vouchers && safeData.vouchers.length > 0 ? (
               <div className="overflow-x-auto max-h-[300px] overflow-y-auto custom-scrollbar">
                 <table className="w-full text-left border-collapse">
                   <thead className="sticky top-0 bg-gray-50 dark:bg-zinc-900 shadow-[0_1px_0_0_rgba(229,231,235,1)] dark:shadow-[0_1px_0_0_rgba(39,39,42,1)] z-10">
@@ -233,7 +232,7 @@ export default function ManageUser() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-zinc-800/50">
-                    {data.vouchers.map((v, i) => (
+                    {safeData.vouchers.map((v, i) => (
                       <tr key={i} className="hover:bg-gray-50/50 dark:hover:bg-zinc-900/50 transition-colors">
                         <td className="px-6 py-3.5 text-sm font-mono font-bold text-gray-800 dark:text-gray-200">{v.code}</td>
                         <td className="px-6 py-3.5 text-sm text-gray-600 dark:text-gray-300 capitalize">{v.type} ({v.value})</td>
@@ -303,8 +302,7 @@ export default function ManageUser() {
           </div>
         </div>
       </div>
-    </div>
-      )}
-    </>
+      </div>
+    </SkeletonWrapper>
   );
 }

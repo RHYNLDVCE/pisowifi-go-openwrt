@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Save, Activity, Coins } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../components/ConfirmModal';
-import PageSkeleton from '../components/PageSkeleton';
+import { SkeletonWrapper } from 'react-skeletonify';
+
 export default function CoinSettings() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -72,11 +73,8 @@ export default function CoinSettings() {
 
   if (!loading && !data) return <div className="text-red-500">Error loading settings.</div>;
 
-  if (loading || !data) return <PageSkeleton type="form" />;
-
   return (
-    <>
-      {data && (
+    <SkeletonWrapper loading={loading}>
         <div className="space-y-6 relative">
           <ConfirmModal 
         isOpen={modalConfig.isOpen}
@@ -114,7 +112,6 @@ export default function CoinSettings() {
         </div>
       </form>
     </div>
-      )}
-    </>
+    </SkeletonWrapper>
   );
 }

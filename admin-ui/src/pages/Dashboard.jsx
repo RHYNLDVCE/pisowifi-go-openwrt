@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Users, Coins, Clock, TrendingUp, TrendingDown, BarChart2, Sun, Calendar, CalendarDays, Landmark, Activity } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Link } from 'react-router-dom';
-import PageSkeleton from '../components/PageSkeleton';export default function Dashboard() {
+import { SkeletonWrapper } from 'react-skeletonify';
+
+export default function Dashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -23,13 +25,12 @@ import PageSkeleton from '../components/PageSkeleton';export default function Da
     return <div className="text-red-500">Error loading data.</div>;
   }
 
-  const { stats } = data || {};
-
-  if (loading) return <PageSkeleton type="dashboard" />;
+  const stats = data?.stats || { 
+    total: 0, yesterday: 0, daily: 0, weekly: 0, monthly: 0, yearly: 0, last_month: 0, chart_data: [{date: 'a', total: 0}, {date: 'b', total: 0}, {date: 'c', total: 0}]
+  };
 
   return (
-    <>
-      {data && (
+    <SkeletonWrapper loading={loading}>
         <div className="space-y-6">
           
           {/* 6 KPI Cards (Enterprise Style) */}
@@ -114,7 +115,6 @@ import PageSkeleton from '../components/PageSkeleton';export default function Da
         </div>
       </div>
       </div>
-      )}
-    </>
+    </SkeletonWrapper>
   );
 }

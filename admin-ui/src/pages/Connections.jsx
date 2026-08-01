@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Activity, Search, Users, ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import PageSkeleton from '../components/PageSkeleton';
-import CustomSelect from '../components/CustomSelect';
 
+import CustomSelect from '../components/CustomSelect';
+import { SkeletonWrapper } from 'react-skeletonify';
 
 export default function Connections() {
   const [data, setData] = useState(null);
@@ -65,7 +65,8 @@ export default function Connections() {
     return <div className="text-red-500">Error loading data.</div>;
   }
 
-  const { users, total_pages, current_page, total_filtered, total_users, active_users } = data || {};
+  const safeData = data || { users: { dummy1: { status: 'connected', device_name: 'Loading...', ip: '...', time: 0, points: 0 }, dummy2: { status: 'paused', device_name: 'Loading...', ip: '...', time: 0, points: 0 } }, total_pages: 1, current_page: 1, total_filtered: 0, total_users: 0, active_users: 0 };
+  const { users, total_pages, current_page, total_filtered, total_users, active_users } = safeData;
 
   const statusOrder = { connected: 1, paused: 2, expired: 3, new: 4 };
   const getStatusWeight = (status) => statusOrder[status?.toLowerCase()] || 5;
@@ -93,11 +94,8 @@ export default function Connections() {
   const safeTotalPages = total_pages || 1;
   const safeCurrentPage = current_page || 1;
 
-  if (loading && !data) return <PageSkeleton type="grid" />;
-
   return (
-    <>
-      {data && (
+    <SkeletonWrapper loading={loading}>
         <div className="space-y-6">
           <div className="bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-md shadow-sm flex flex-col p-6 md:p-8">
         <div className="flex flex-wrap gap-4 justify-between items-center mb-6 pb-2 border-b border-gray-200 dark:border-zinc-800">
@@ -284,8 +282,7 @@ export default function Connections() {
           </div>
         </div>
       </div>
-    </div>
-      )}
-    </>
+      </div>
+    </SkeletonWrapper>
   );
 }

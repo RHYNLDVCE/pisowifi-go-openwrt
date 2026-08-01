@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Terminal, Search, X } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
-import PageSkeleton from '../components/PageSkeleton';
+import { SkeletonWrapper } from 'react-skeletonify';
+
 export default function Logs() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -152,10 +153,13 @@ export default function Logs() {
     return '';
   };
 
-  if (loading && logs.length === 0) return <PageSkeleton type="table" />;
+  let displayLogs = filteredLogs;
+  if (loading && logs.length === 0) {
+    displayLogs = Array(5).fill({ timestamp: '...', type: 'SYSTEM', message: 'Loading logs...' });
+  }
 
   return (
-    <>
+    <SkeletonWrapper loading={loading}>
     <div className="w-full">
       {/* Filter and Search Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
@@ -215,11 +219,11 @@ export default function Logs() {
         </div>
 
         <div className="h-[600px] overflow-y-auto p-2 sm:p-4 bg-gray-50 dark:bg-zinc-950 font-mono text-[10px] sm:text-sm leading-relaxed">
-          {filteredLogs.length === 0 ? (
+          {displayLogs.length === 0 ? (
             <div className="text-gray-400 dark:text-gray-500 italic">No logs found matching filters.</div>
           ) : (
             <>
-              {filteredLogs.map((log, i) => (
+              {displayLogs.map((log, i) => (
                 <div key={i} className={`flex flex-col sm:flex-row sm:gap-4 px-2 py-1.5 rounded-md mb-1.5 transition-colors ${i % 2 === 0 ? 'bg-gray-200/40 dark:bg-zinc-900/60' : 'bg-transparent'} hover:bg-gray-200 dark:hover:bg-zinc-800`}>
                   <div className="flex gap-2 sm:gap-4 pt-0.5">
                     <span className="text-gray-400 dark:text-gray-500 shrink-0 sm:w-40">[{log.timestamp}]</span>
@@ -243,6 +247,6 @@ export default function Logs() {
         </div>
       </div>
     </div>
-    </>
+    </SkeletonWrapper>
   );
 }

@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Power, CalendarClock, DatabaseBackup, Database, UploadCloud, Save, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../components/ConfirmModal';
-import PageSkeleton from '../components/PageSkeleton';
+import { SkeletonWrapper } from 'react-skeletonify';
+
 export default function SystemSettings() {
   const [schedule, setSchedule] = useState({ enabled: false, time: '03:00' });
   const [loadingSchedule, setLoadingSchedule] = useState(true);
@@ -151,10 +152,8 @@ export default function SystemSettings() {
     );
   };
 
-  if (loadingSchedule) return <PageSkeleton type="form" />;
-
   return (
-    <>
+    <SkeletonWrapper loading={loadingSchedule}>
     <div className="space-y-6 relative">
 
       <ConfirmModal
@@ -198,9 +197,6 @@ export default function SystemSettings() {
               </div>
             </div>
 
-            {loadingSchedule ? (
-              <div className="text-sm text-gray-500 mb-6">Loading schedule...</div>
-            ) : (
               <form id="schedule-form" onSubmit={handleSaveSchedule} className="space-y-6 mb-6">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-bold text-gray-900 dark:text-white">Enable Daily Reboot</span>
@@ -220,7 +216,6 @@ export default function SystemSettings() {
                   />
                 </div>
               </form>
-            )}
           </div>
           <button
             form="schedule-form"
@@ -318,6 +313,6 @@ export default function SystemSettings() {
       </div>
 
     </div>
-    </>
+    </SkeletonWrapper>
   );
 }

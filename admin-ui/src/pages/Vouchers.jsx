@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Ticket, Search, Clock, Zap, Save, CheckCircle, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
-import PageSkeleton from '../components/PageSkeleton';
+import { SkeletonWrapper } from 'react-skeletonify';
 
 export default function Vouchers() {
   const [data, setData] = useState({ vouchers: [], voucher_enabled: false, voucher_min_time_minutes: 5, voucher_point_promos: [] });
@@ -85,7 +85,7 @@ export default function Vouchers() {
     setCurrentPage(1);
   };
 
-  const sortedVouchers = [...(data.vouchers || [])]
+  const sortedVouchers = [...(data?.vouchers || Array(5).fill({ code: 'dummy', type: 'time', value: '10', status: 'active', created_by: 'admin', created_at: 0 }))]
     .filter(v => 
       v.code.toLowerCase().includes(search.toLowerCase()) || 
       v.created_by.toLowerCase().includes(search.toLowerCase()) || 
@@ -115,11 +115,10 @@ export default function Vouchers() {
     return <div className="text-red-500">Error loading data.</div>;
   }
 
-  if (loading && (!data || !data.vouchers)) return <PageSkeleton type="table" />;
+  const safeData = data || { voucher_enabled: false, voucher_min_time_minutes: 5, voucher_point_promos: [] };
 
   return (
-    <>
-      {data && data.vouchers && (
+    <SkeletonWrapper loading={loading}>
         <div className="space-y-6 relative">
       
       {/* Settings Form */}
@@ -143,8 +142,8 @@ export default function Vouchers() {
               <label className="text-xs font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1"><Clock size={14} /> Minimum Time (Minutes)</label>
               <input 
                 type="number" 
-                value={data.voucher_min_time_minutes} 
-                onChange={e => setData({...data, voucher_min_time_minutes: e.target.value})}
+                value={safeData.voucher_min_time_minutes} 
+                onChange={e => setData({...safeData, voucher_min_time_minutes: e.target.value})}
                 min="1"
                 className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded outline-none focus:ring-2 focus:ring-black dark:focus:ring-white text-sm" 
               />
@@ -160,12 +159,12 @@ export default function Vouchers() {
           </div>
 
           <div className="space-y-3 mb-8">
-            {(!data.voucher_point_promos || data.voucher_point_promos.length === 0) ? (
+            {(!safeData.voucher_point_promos || safeData.voucher_point_promos.length === 0) ? (
                <div className="p-8 border-2 border-dashed border-gray-200 dark:border-zinc-800 rounded-md text-center text-gray-500 dark:text-gray-400">
                  No voucher point promos configured.
                </div>
             ) : (
-               data.voucher_point_promos.map((promo, idx) => (
+               safeData.voucher_point_promos.map((promo, idx) => (
                  <div key={promo.id || idx} className="flex flex-col sm:flex-row gap-3 bg-gray-50 dark:bg-zinc-900/50 p-3 rounded-md border border-gray-200 dark:border-zinc-800 items-end">
                    <div className="flex-1 w-full">
                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Promo Name</label>
@@ -236,15 +235,15 @@ export default function Vouchers() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-zinc-800">
-              {paginatedVouchers.length === 0 ? (
+              {paginatedVouchers.length === 0 && !loading ? (
                 <tr>
                   <td colSpan="6" className="px-4 py-8 text-center text-sm text-gray-500">
                     No vouchers found.
                   </td>
                 </tr>
               ) : (
-                paginatedVouchers.map((v) => (
-                  <tr key={v.code} className="hover:bg-gray-50 dark:hover:bg-zinc-900/50 transition-colors">
+                paginatedVouchers.map((v, i) => (
+                  <tr key={v.code || i} className="hover:bg-gray-50 dark:hover:bg-zinc-900/50 transition-colors">
                     <td className="px-4 py-3 text-sm font-mono font-bold text-gray-900 dark:text-white">
                       {v.code}
                     </td>
@@ -309,7 +308,6 @@ export default function Vouchers() {
         )}
       </div>
       </div>
-      )}
-    </>
+    </SkeletonWrapper>
   );
 }

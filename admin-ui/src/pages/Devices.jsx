@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Server, Wifi, RefreshCw, Activity } from 'lucide-react';
 import toast from 'react-hot-toast';
-import PageSkeleton from '../components/PageSkeleton';
+import { SkeletonWrapper } from 'react-skeletonify';
+
 export default function Devices() {
   const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -110,10 +111,10 @@ export default function Devices() {
     }
   };
 
-  if (loading) return <PageSkeleton type="table" />;
+  const safeDevices = devices.length === 0 && loading ? Array(3).fill({ vendor: 'Loading', mac: '...', ip: '...' }) : devices;
 
   return (
-    <>
+    <SkeletonWrapper loading={loading}>
       <div className="w-full">
         <div className="flex justify-end gap-2 mb-4">
         <button 
@@ -148,7 +149,7 @@ export default function Devices() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-zinc-800">
-                {devices.map((dev, idx) => (
+                {safeDevices.map((dev, idx) => (
                   <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-zinc-900/50 transition-colors">
                     <td className={`pl-4 sm:px-6 py-2 sm:py-4 font-bold text-[11px] sm:text-sm whitespace-nowrap ${dev.is_custom ? 'text-blue-600 dark:text-blue-400' : ''}`}>{dev.vendor || 'Unknown Device'}</td>
                     <td className="px-3 sm:px-6 py-2 sm:py-4 text-[10px] sm:text-sm text-gray-500 dark:text-gray-400 font-mono whitespace-nowrap">{dev.mac}</td>
@@ -287,6 +288,6 @@ export default function Devices() {
         </div>
       )}
     </div>
-    </>
+    </SkeletonWrapper>
   );
 }

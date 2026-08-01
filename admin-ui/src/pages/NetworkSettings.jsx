@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Save, Activity, Clock, Timer, PauseCircle, Gift, Gauge } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../components/ConfirmModal';
-import PageSkeleton from '../components/PageSkeleton';
+import { SkeletonWrapper } from 'react-skeletonify';
+
 export default function NetworkSettings() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -74,11 +75,10 @@ export default function NetworkSettings() {
 
   if (!loading && !data) return <div className="text-red-500">Error loading settings.</div>;
 
-  if (loading || !data) return <PageSkeleton type="form" />;
+  const safeData = data || { global_speed_limit: '', sqm_download_mbps: '', sqm_upload_mbps: '', custom_ttl: 1 };
 
   return (
-    <>
-      {data && (
+    <SkeletonWrapper loading={loading}>
         <div className="space-y-6 relative">
           <ConfirmModal 
         isOpen={modalConfig.isOpen}
@@ -115,7 +115,7 @@ export default function NetworkSettings() {
                 <input 
                   type="number" 
                   name="speed_limit_val" 
-                  defaultValue={data.global_speed_limit} 
+                  defaultValue={safeData.global_speed_limit} 
                   className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
                 />
              </div>
@@ -147,7 +147,7 @@ export default function NetworkSettings() {
                  <input 
                    type="number" 
                    name="sqm_download_mbps" 
-                   defaultValue={data.sqm_download_mbps} 
+                   defaultValue={safeData.sqm_download_mbps} 
                    className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
                  />
                  <p className="text-[10px] text-gray-500 mt-1">Set to 95% of your true maximum ISP download speed.</p>
@@ -157,7 +157,7 @@ export default function NetworkSettings() {
                  <input 
                    type="number" 
                    name="sqm_upload_mbps" 
-                   defaultValue={data.sqm_upload_mbps} 
+                   defaultValue={safeData.sqm_upload_mbps} 
                    className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
                  />
                  <p className="text-[10px] text-gray-500 mt-1">Set to 95% of your true maximum ISP upload speed.</p>
@@ -241,7 +241,7 @@ export default function NetworkSettings() {
              <input 
                type="number" 
                name="custom_ttl" 
-               defaultValue={data.custom_ttl ?? 1} 
+               defaultValue={safeData.custom_ttl ?? 1} 
                className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
              />
           </div>
@@ -254,7 +254,6 @@ export default function NetworkSettings() {
         </div>
       </form>
       </div>
-      )}
-    </>
+    </SkeletonWrapper>
   );
 }

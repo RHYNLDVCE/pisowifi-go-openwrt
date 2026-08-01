@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Save, Activity, PauseCircle, Gift } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../components/ConfirmModal';
-import PageSkeleton from '../components/PageSkeleton';
+import { SkeletonWrapper } from 'react-skeletonify';
+
 export default function SessionSettings() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -64,11 +65,10 @@ export default function SessionSettings() {
 
   if (!loading && !data) return <div className="text-red-500">Error loading settings.</div>;
 
-  if (loading || !data) return <PageSkeleton type="form" />;
+  const safeData = data || { inactive_timeout: 300, free_time_duration: 15 };
 
   return (
-    <>
-      {data && (
+    <SkeletonWrapper loading={loading}>
         <div className="space-y-6 relative">
           <ConfirmModal 
         isOpen={modalConfig.isOpen}
@@ -105,7 +105,7 @@ export default function SessionSettings() {
                 <input 
                   type="number" 
                   name="inactive_timeout" 
-                  defaultValue={data.inactive_timeout} 
+                  defaultValue={safeData.inactive_timeout} 
                   className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
                 />
              </div>
@@ -136,7 +136,7 @@ export default function SessionSettings() {
                 <input 
                   type="number" 
                   name="free_time_duration" 
-                  defaultValue={data.free_time_duration} 
+                  defaultValue={safeData.free_time_duration} 
                   className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded outline-none focus:ring-2 focus:ring-black dark:focus:ring-white" 
                 />
              </div>
@@ -150,7 +150,6 @@ export default function SessionSettings() {
         </div>
           </form>
         </div>
-      )}
-    </>
+    </SkeletonWrapper>
   );
 }

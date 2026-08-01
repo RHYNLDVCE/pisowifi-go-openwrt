@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { SkeletonProvider } from 'react-skeletonify';
+import 'react-skeletonify/dist/index.css';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { Home, Users, Image, Activity, ShieldAlert, Sun, Moon, Menu, Wifi, MonitorSmartphone, Coins, Award, Server, LogOut, X, Clock, Settings, Ticket } from 'lucide-react';
@@ -257,8 +259,14 @@ function Layout({ children }) {
 
 export default function App() {
   return (
-    <BrowserRouter>
-       <Layout>
+    <SkeletonProvider
+      config={{
+        animation: "animation-1",
+        borderRadius: "8px",
+        animationSpeed: 3,
+      }}>
+      <BrowserRouter>
+         <Layout>
          <Routes>
            <Route path="/admin" element={<Dashboard />} />
            <Route path="/admin/connections" element={<Connections />} />
@@ -276,5 +284,6 @@ export default function App() {
          </Routes>
        </Layout>
     </BrowserRouter>
+    </SkeletonProvider>
   );
 }

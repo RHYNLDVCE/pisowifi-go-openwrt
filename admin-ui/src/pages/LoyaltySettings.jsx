@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Save, Activity, Award, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../components/ConfirmModal';
-import PageSkeleton from '../components/PageSkeleton';
+import { SkeletonWrapper } from 'react-skeletonify';
+
 export default function LoyaltySettings() {
   const [pointsConfig, setPointsConfig] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -66,11 +67,10 @@ export default function LoyaltySettings() {
 
   if (!loading && !pointsConfig) return <div className="text-red-500">Error loading settings.</div>;
 
-  if (loading || !pointsConfig) return <PageSkeleton type="form" />;
+  const safeConfig = pointsConfig || { enabled: false, coin_map: {}, promos: [] };
 
   return (
-    <>
-      {pointsConfig && (
+    <SkeletonWrapper loading={loading}>
         <div className="space-y-6 relative">
           <ConfirmModal 
         isOpen={modalConfig.isOpen}
@@ -89,15 +89,15 @@ export default function LoyaltySettings() {
           <label className="relative inline-flex items-center cursor-pointer">
             <input 
               type="checkbox" 
-              checked={pointsConfig.enabled} 
-              onChange={(e) => setPointsConfig({...pointsConfig, enabled: e.target.checked})}
+              checked={safeConfig.enabled} 
+              onChange={(e) => setPointsConfig({...safeConfig, enabled: e.target.checked})}
               className="peer sr-only" 
             />
             <div className="w-11 h-6 bg-gray-300 dark:bg-zinc-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-black/20 dark:peer-focus:ring-blue-600/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black dark:peer-checked:bg-blue-600"></div>
           </label>
         </h3>
 
-        <div className={!pointsConfig.enabled ? 'opacity-50 pointer-events-none transition-opacity duration-300' : 'transition-opacity duration-300'}>
+        <div className={!safeConfig.enabled ? 'opacity-50 pointer-events-none transition-opacity duration-300' : 'transition-opacity duration-300'}>
           <h4 className="text-sm font-bold uppercase tracking-widest text-gray-500 mb-4">Points Conversion (Coins to Points)</h4>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
             {[1, 5, 10, 20].map(coin => (
@@ -106,10 +106,10 @@ export default function LoyaltySettings() {
                 <input 
                   type="number" 
                   step="0.1"
-                  value={pointsConfig.coin_map[coin.toString()] || ''}
+                  value={safeConfig.coin_map[coin.toString()] || ''}
                   onChange={(e) => setPointsConfig({
-                    ...pointsConfig, 
-                    coin_map: { ...pointsConfig.coin_map, [coin.toString()]: parseFloat(e.target.value) || 0 }
+                    ...safeConfig, 
+                    coin_map: { ...safeConfig.coin_map, [coin.toString()]: parseFloat(e.target.value) || 0 }
                   })}
                   className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
                 />
@@ -125,12 +125,12 @@ export default function LoyaltySettings() {
           </div>
 
           <div className="space-y-3 mb-8">
-            {(!pointsConfig.promos || pointsConfig.promos.length === 0) ? (
+            {(!safeConfig.promos || safeConfig.promos.length === 0) ? (
                <div className="p-8 border-2 border-dashed border-gray-200 dark:border-zinc-800 rounded-md text-center text-gray-500 dark:text-gray-400">
                  No active promos. Click 'Add Promo' to create one.
                </div>
             ) : (
-               pointsConfig.promos.map((promo, idx) => (
+               safeConfig.promos.map((promo, idx) => (
                  <div key={promo.id || idx} className="flex flex-col sm:flex-row gap-3 bg-gray-50 dark:bg-zinc-900/50 p-3 rounded-md border border-gray-200 dark:border-zinc-800 items-end">
                    <div className="flex-1 w-full">
                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Promo Title</label>
@@ -160,7 +160,6 @@ export default function LoyaltySettings() {
         </div>
       </form>
     </div>
-      )}
-    </>
+    </SkeletonWrapper>
   );
 }
