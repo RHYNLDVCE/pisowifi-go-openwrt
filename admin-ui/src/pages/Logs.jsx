@@ -94,12 +94,13 @@ export default function Logs() {
     }
   };
 
-  const getLogCategory = (type) => {
+  const getLogCategory = (type, message) => {
     const t = (type || '').toUpperCase();
+    const m = (message || '').toUpperCase();
     if (t.includes('COIN')) return 'Coin';
     if (t.includes('PORTAL')) return 'Portal';
     if (t.includes('ADMIN') || t.includes('LOGIN') || t.includes('LOGOUT') || t.includes('CONFIG') || t.includes('USER') || t.includes('DEVICE') || t.includes('UPDATE')) return 'Admin';
-    if (t.includes('ERROR') || t.includes('FAIL') || t.includes('TIMEOUT')) return 'Error';
+    if (t.includes('ERROR') || t.includes('FAIL') || t.includes('TIMEOUT') || m.includes('[ERROR]')) return 'Error';
     if (t.includes('SECURITY')) return 'Security';
     return 'System';
   };
@@ -117,10 +118,9 @@ export default function Logs() {
     return true;
   });
 
-  // Then, filter by the active tab
   const filteredLogs = searchFilteredLogs.filter(log => {
     if (activeFilter !== 'All') {
-      if (getLogCategory(log.type) !== activeFilter) return false;
+      if (getLogCategory(log.type, log.message) !== activeFilter) return false;
     }
     return true;
   });
@@ -129,7 +129,7 @@ export default function Logs() {
     // We cannot accurately count total historical categories without fetching all, 
     // so we show the counts of what we have loaded locally for now.
     if (cat === 'All') return total || searchFilteredLogs.length;
-    return searchFilteredLogs.filter(l => getLogCategory(l.type) === cat).length;
+    return searchFilteredLogs.filter(l => getLogCategory(l.type, l.message) === cat).length;
   };
 
   const getFilterStyle = (cat, isActive) => {

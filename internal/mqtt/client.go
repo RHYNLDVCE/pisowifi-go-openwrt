@@ -60,7 +60,7 @@ func Init(brokerURL, clientID, username, password string, onConnectCb func()) {
 		// Clear the LWT by publishing online status in a non-blocking goroutine
 		go func() {
 			if token := c.Publish("pisowifi/lwt", qos, true, []byte(`{"status":"online"}`)); token.Wait() && token.Error() != nil {
-				logger.SystemLog(fmt.Sprintf("[MQTT] Failed to publish online status: %v", token.Error()))
+				logger.SystemLog(fmt.Sprintf("[MQTT] [ERROR] Failed to publish online status: %v", token.Error()))
 			}
 			
 			if onConnectCb != nil {
@@ -93,7 +93,7 @@ func Init(brokerURL, clientID, username, password string, onConnectCb func()) {
 	token := mqttClient.Connect()
 	if token.WaitTimeout(connectTimeout) {
 		if err := token.Error(); err != nil {
-			logger.SystemLog(fmt.Sprintf("[MQTT] Initial connect failed: %v — will retry in background", err))
+			logger.SystemLog(fmt.Sprintf("[MQTT] [ERROR] Initial connect failed: %v — will retry in background", err))
 		}
 	} else {
 		logger.SystemLog("[MQTT] Initial connect timed out — will retry in background")
@@ -121,7 +121,7 @@ func Publish(topic string, payload interface{}) error {
 		return fmt.Errorf("mqtt publish timeout: %s", topic)
 	}
 	if err := token.Error(); err != nil {
-		logger.SystemLog(fmt.Sprintf("[MQTT] Publish error: topic=%s err=%v", topic, err))
+		logger.SystemLog(fmt.Sprintf("[MQTT] [ERROR] Publish error: topic=%s err=%v", topic, err))
 		return err
 	}
 	return nil
@@ -146,7 +146,7 @@ func PublishRetained(topic string, payload interface{}) error {
 		return fmt.Errorf("mqtt publish timeout: %s", topic)
 	}
 	if err := token.Error(); err != nil {
-		logger.SystemLog(fmt.Sprintf("[MQTT] PublishRetained error: topic=%s err=%v", topic, err))
+		logger.SystemLog(fmt.Sprintf("[MQTT] [ERROR] PublishRetained error: topic=%s err=%v", topic, err))
 		return err
 	}
 	return nil

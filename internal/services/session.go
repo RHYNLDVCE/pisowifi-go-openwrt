@@ -68,7 +68,7 @@ func ConnectUser(mac string) string {
 			state.Users.UpdateField(mac, func(ur *state.UserRecord) {
 				ur.Status = "paused"
 			})
-			logger.SystemLog(fmt.Sprintf("[ERROR] Router timeout for MAC %s: failed to connect", mac))
+			logger.SystemLog(fmt.Sprintf("[SESSION] [ERROR] Router timeout for MAC %s: failed to connect", mac))
 			state.Manager.Send(mac, map[string]any{
 				"type":           "sync",
 				"status":         "paused",
@@ -127,7 +127,7 @@ func PauseUser(mac string) string {
 			state.Users.UpdateField(mac, func(ur *state.UserRecord) {
 				ur.Status = "connected"
 			})
-			logger.SystemLog(fmt.Sprintf("[ERROR] Router timeout for MAC %s: failed to pause", mac))
+			logger.SystemLog(fmt.Sprintf("[SESSION] [ERROR] Router timeout for MAC %s: failed to pause", mac))
 			state.Manager.Send(mac, map[string]any{
 				"type":           "sync",
 				"status":         "connected",

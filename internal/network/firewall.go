@@ -52,7 +52,7 @@ func InitFirewall() {
 		cfg.InactivePacketThreshold,
 	)
 	if err := mqttcmd.InitFirewall(payload); err != nil {
-		logger.SystemLog("[FIREWALL] Failed to send init command: " + err.Error())
+		logger.SystemLog("[FIREWALL] [ERROR] Failed to send init command: " + err.Error())
 	} else {
 		logger.SystemLog("[FIREWALL] Init command sent to router.")
 	}
@@ -85,7 +85,7 @@ func ReloadFirewall() {
 		cfg.InactivePacketThreshold,
 	)
 	if err := mqttcmd.ReloadFirewall(payload); err != nil {
-		logger.SystemLog("[FIREWALL] Failed to send reload command: " + err.Error())
+		logger.SystemLog("[FIREWALL] [ERROR] Failed to send reload command: " + err.Error())
 		return
 	}
 
@@ -111,7 +111,7 @@ func AllowUser(mac, ip string) {
 		resolvedIP = GetIPByMAC(mac)
 	}
 	if err := mqttcmd.AllowUser(mac, resolvedIP); err != nil {
-		logger.SystemLog("[FIREWALL] AllowUser MQTT error for " + mac + ": " + err.Error())
+		logger.SystemLog("[FIREWALL] [ERROR] AllowUser MQTT error for " + mac + ": " + err.Error())
 	}
 	if resolvedIP != "" {
 		ApplySpeedLimit(resolvedIP)
@@ -129,7 +129,7 @@ func BlockUser(mac, ip string) {
 		resolvedIP = GetIPByMAC(mac)
 	}
 	if err := mqttcmd.BlockUser(mac, resolvedIP); err != nil {
-		logger.SystemLog("[FIREWALL] BlockUser MQTT error for " + mac + ": " + err.Error())
+		logger.SystemLog("[FIREWALL] [ERROR] BlockUser MQTT error for " + mac + ": " + err.Error())
 	}
 	if resolvedIP != "" {
 		RemoveSpeedLimit(resolvedIP)
@@ -147,7 +147,7 @@ func ApplySpeedLimit(ip string) {
 		return
 	}
 	if err := mqttcmd.ApplySpeedLimit(ip, cfg.GlobalSpeedLimit); err != nil {
-		logger.SystemLog("[FIREWALL] ApplySpeedLimit MQTT error for " + ip + ": " + err.Error())
+		logger.SystemLog("[FIREWALL] [ERROR] ApplySpeedLimit MQTT error for " + ip + ": " + err.Error())
 	}
 }
 
@@ -157,7 +157,7 @@ func RemoveSpeedLimit(ip string) {
 		return
 	}
 	if err := mqttcmd.RemoveSpeedLimit(ip); err != nil {
-		logger.SystemLog("[FIREWALL] RemoveSpeedLimit MQTT error for " + ip + ": " + err.Error())
+		logger.SystemLog("[FIREWALL] [ERROR] RemoveSpeedLimit MQTT error for " + ip + ": " + err.Error())
 	}
 }
 

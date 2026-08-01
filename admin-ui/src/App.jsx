@@ -26,6 +26,24 @@ function Layout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [errorCount, setErrorCount] = useState(0);
+
+  useEffect(() => {
+    const fetchErrorCount = () => {
+      fetch('/admin/api/logs?log_type=Error&limit=1')
+        .then(res => res.json())
+        .then(data => {
+          if (data && typeof data.total !== 'undefined') {
+            setErrorCount(data.total);
+          }
+        })
+        .catch(() => {});
+    };
+
+    fetchErrorCount();
+    const interval = setInterval(fetchErrorCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (darkMode) {
@@ -61,7 +79,7 @@ function Layout({ children }) {
     { path: '/admin/vouchers', icon: <Ticket size={20} />, label: 'Vouchers' },
     { path: '/admin/devices', icon: <Activity size={20} />, label: 'Infrastructure' },
     { path: '/admin/maintenance', icon: <Settings size={20} />, label: 'System Maintenance' },
-    { path: '/admin/logs', icon: <ShieldAlert size={20} />, label: 'System Logs' },
+    { path: '/admin/logs', icon: <ShieldAlert size={20} />, label: 'System Logs', badge: errorCount },
   ];
 
   const currentNavItem = navItems.find(item => item.path === location.pathname);
@@ -94,14 +112,21 @@ function Layout({ children }) {
                   key={item.path} 
                   to={item.path} 
                   onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-4 px-5 py-4 rounded-xl text-base font-semibold transition-all ${
+                  className={`flex items-center justify-between px-5 py-4 rounded-xl text-base font-semibold transition-all ${
                     isActive 
                       ? 'bg-gray-200 text-black dark:bg-zinc-800 dark:text-white' 
                       : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-900'
                   }`}
                 >
-                  {item.icon}
-                  <span>{item.label}</span>
+                  <div className="flex items-center gap-4">
+                    {item.icon}
+                    <span>{item.label}</span>
+                  </div>
+                  {item.badge > 0 && (
+                    <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full shrink-0">
+                      {item.badge > 99 ? '99+' : item.badge}
+                    </span>
+                  )}
                 </Link>
               );
             })}
@@ -135,14 +160,21 @@ function Layout({ children }) {
                 key={item.path} 
                 to={item.path} 
                 onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
+                className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
                   isActive 
                     ? 'bg-gray-200 text-black dark:bg-zinc-800 dark:text-white shadow-sm' 
                     : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-zinc-900 dark:hover:text-gray-200'
                 }`}
               >
-                {item.icon}
-                <span>{item.label}</span>
+                <div className="flex items-center gap-3.5">
+                  {item.icon}
+                  <span>{item.label}</span>
+                </div>
+                {item.badge > 0 && (
+                  <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0">
+                    {item.badge > 99 ? '99+' : item.badge}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -240,7 +272,14 @@ function Layout({ children }) {
             sidebarOpen ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'
           }`}
         >
-          <Menu size={sidebarOpen ? 24 : 22} />
+          <div className="relative">
+            <Menu size={sidebarOpen ? 24 : 22} />
+            {errorCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[8px] font-bold px-1 min-w-[14px] h-[14px] flex items-center justify-center rounded-full border border-white dark:border-zinc-950">
+                {errorCount > 99 ? '99+' : errorCount}
+              </span>
+            )}
+          </div>
           <span className="text-[10px] font-bold">Menu</span>
         </button>
       </div>

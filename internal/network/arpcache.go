@@ -73,7 +73,7 @@ func RequestARPSync() {
 	syncMu.Unlock()
 
 	if err := mqttcmd.PublishRetained("pisowifi/arp/request", map[string]string{"action": "dump"}); err != nil {
-		logger.SystemLog("[ARP] Failed to publish arp/request: " + err.Error())
+		logger.SystemLog("[ARP] [ERROR] Failed to publish arp/request: " + err.Error())
 	}
 }
 
@@ -120,7 +120,7 @@ func handleARPMessage(_ paho.Client, msg paho.Message) {
 				}
 			})
 		}
-		logger.SystemLog("[ARP] Learned: " + mac + " → " + ip + " (" + p.Hostname + ")")
+		// logger.SystemLog("[ARP] Learned: " + mac + " → " + ip + " (" + p.Hostname + ")")
 
 	case "del":
 		if oldIP, ok := macToIP[mac]; ok {
@@ -129,7 +129,7 @@ func handleARPMessage(_ paho.Client, msg paho.Message) {
 		delete(macToIP, mac)
 		// We intentionally DO NOT delete macToHost[mac] here!
 		// If a user's phone goes to sleep, we still want the Admin UI to know their hostname.
-		logger.SystemLog("[ARP] Removed IP mapping: " + mac + " (was " + ip + ")")
+		// logger.SystemLog("[ARP] Removed IP mapping: " + mac + " (was " + ip + ")")
 	}
 }
 

@@ -22,7 +22,7 @@ var (
 // Setup initialises the coin input pin and the relay output pin using WiringOP (CGO).
 func Setup() {
 	if C.wiringPiSetupPhys() == -1 {
-		logger.SystemLog("[HW] Fatal: Failed to setup wiringPi")
+		logger.SystemLog("[HW] [ERROR] Fatal: Failed to setup wiringPi")
 		return
 	}
 
@@ -66,7 +66,7 @@ func WaitForPulse(onDetected func()) int {
 		timeout := time.Now()
 		for readPinFast() == 0 {
 			if time.Since(timeout) > 2*time.Second {
-				logger.SystemLog("   [Error] Signal permanently stuck LOW. Resetting...")
+				logger.SystemLog("   [HW] [ERROR] Signal permanently stuck LOW. Resetting...")
 				return 0
 			}
 			time.Sleep(10 * time.Millisecond)
@@ -92,7 +92,7 @@ func WaitForPulse(onDetected func()) int {
 				func() {
 					defer func() {
 						if r := recover(); r != nil {
-							logger.SystemLog(fmt.Sprintf("Callback Error: %v", r))
+							logger.SystemLog(fmt.Sprintf("[HW] [ERROR] Callback Error: %v", r))
 						}
 					}()
 					onDetected()

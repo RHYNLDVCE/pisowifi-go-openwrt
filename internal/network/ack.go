@@ -66,7 +66,7 @@ func handleAckBlock(_ paho.Client, msg paho.Message) {
 		}
 		logger.SystemLog("[ACK] Router successfully blocked: " + mac)
 	} else {
-		logger.SystemLog("[ERROR] Router failed to block: " + mac + " (Status: " + p.Status + ")")
+		logger.SystemLog("[FIREWALL] [ERROR] Router failed to block: " + mac + " (Status: " + p.Status + ")")
 	}
 }
 
@@ -105,6 +105,6 @@ func handleAckAllow(_ paho.Client, msg paho.Message) {
 		}
 		logger.SystemLog("[ACK] Router successfully allowed: " + mac)
 	} else {
-		logger.SystemLog("[ERROR] Router failed to allow: " + mac + " (Status: " + p.Status + ")")
+		logger.SystemLog("[FIREWALL] [ERROR] Router failed to allow: " + mac + " (Status: " + p.Status + ")")
 	}
 }
