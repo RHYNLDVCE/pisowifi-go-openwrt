@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Save, Activity, Coins } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../components/ConfirmModal';
-import { Skeleton } from 'boneyard-js/react';
-
+import PageSkeleton from '../components/PageSkeleton';
 export default function CoinSettings() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -73,8 +72,10 @@ export default function CoinSettings() {
 
   if (!loading && !data) return <div className="text-red-500">Error loading settings.</div>;
 
+  if (loading || !data) return <PageSkeleton type="form" />;
+
   return (
-    <Skeleton name="coin-settings" loading={loading}>
+    <>
       {data && (
         <div className="space-y-6 relative">
           <ConfirmModal 
@@ -114,6 +115,6 @@ export default function CoinSettings() {
       </form>
     </div>
       )}
-    </Skeleton>
+    </>
   );
 }

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Activity, Search, Users, ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Skeleton } from 'boneyard-js/react';
+import PageSkeleton from '../components/PageSkeleton';
 import CustomSelect from '../components/CustomSelect';
 
 
@@ -93,8 +93,10 @@ export default function Connections() {
   const safeTotalPages = total_pages || 1;
   const safeCurrentPage = current_page || 1;
 
+  if (loading && !data) return <PageSkeleton type="grid" />;
+
   return (
-    <Skeleton name="connections" loading={loading && !data}>
+    <>
       {data && (
         <div className="space-y-6">
           <div className="bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-md shadow-sm flex flex-col p-6 md:p-8">
@@ -284,6 +286,6 @@ export default function Connections() {
       </div>
     </div>
       )}
-    </Skeleton>
+    </>
   );
 }

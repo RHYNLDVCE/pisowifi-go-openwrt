@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Power, CalendarClock, DatabaseBackup, Database, UploadCloud, Save, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../components/ConfirmModal';
-import { Skeleton } from 'boneyard-js/react';
-
+import PageSkeleton from '../components/PageSkeleton';
 export default function SystemSettings() {
   const [schedule, setSchedule] = useState({ enabled: false, time: '03:00' });
   const [loadingSchedule, setLoadingSchedule] = useState(true);
@@ -152,8 +151,10 @@ export default function SystemSettings() {
     );
   };
 
+  if (loadingSchedule) return <PageSkeleton type="form" />;
+
   return (
-    <Skeleton name="system-settings" loading={loadingSchedule}>
+    <>
     <div className="space-y-6 relative">
 
       <ConfirmModal
@@ -317,6 +318,6 @@ export default function SystemSettings() {
       </div>
 
     </div>
-    </Skeleton>
+    </>
   );
 }

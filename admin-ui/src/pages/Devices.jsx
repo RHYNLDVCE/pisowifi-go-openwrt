@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Server, Wifi, RefreshCw, Activity } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Skeleton } from 'boneyard-js/react';
-
+import PageSkeleton from '../components/PageSkeleton';
 export default function Devices() {
   const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -111,8 +110,10 @@ export default function Devices() {
     }
   };
 
+  if (loading) return <PageSkeleton type="table" />;
+
   return (
-    <Skeleton name="devices" loading={loading}>
+    <>
       <div className="w-full">
         <div className="flex justify-end gap-2 mb-4">
         <button 
@@ -286,6 +287,6 @@ export default function Devices() {
         </div>
       )}
     </div>
-    </Skeleton>
+    </>
   );
 }

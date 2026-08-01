@@ -2,9 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Users, Coins, Clock, TrendingUp, TrendingDown, BarChart2, Sun, Calendar, CalendarDays, Landmark, Activity } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Link } from 'react-router-dom';
-import { Skeleton } from 'boneyard-js/react';
-
-export default function Dashboard() {
+import PageSkeleton from '../components/PageSkeleton';export default function Dashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -27,8 +25,10 @@ export default function Dashboard() {
 
   const { stats } = data || {};
 
+  if (loading) return <PageSkeleton type="dashboard" />;
+
   return (
-    <Skeleton name="dashboard" loading={loading}>
+    <>
       {data && (
         <div className="space-y-6">
           
@@ -115,6 +115,6 @@ export default function Dashboard() {
       </div>
       </div>
       )}
-    </Skeleton>
+    </>
   );
 }

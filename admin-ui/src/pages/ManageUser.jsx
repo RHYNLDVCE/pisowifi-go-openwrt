@@ -4,8 +4,7 @@ import { ArrowLeft, Clock, ShieldBan, Trash2, Check, Activity, Star, ChevronDown
 import toast from 'react-hot-toast';
 import CustomSelect from '../components/CustomSelect';
 import ConfirmModal from '../components/ConfirmModal';
-import { Skeleton } from 'boneyard-js/react';
-
+import PageSkeleton from '../components/PageSkeleton';
 export default function ManageUser() {
   const { mac } = useParams();
   const navigate = useNavigate();
@@ -65,8 +64,10 @@ export default function ManageUser() {
 
   const { user, device_name, time_formatted, history } = data || {};
 
+  if (loading || !data) return <PageSkeleton type="dashboard" />;
+
   return (
-    <Skeleton name="manage-user" loading={loading}>
+    <>
       {data && !data.error && (
         <div className="space-y-6 w-full relative">
 
@@ -304,6 +305,6 @@ export default function ManageUser() {
       </div>
     </div>
       )}
-    </Skeleton>
+    </>
   );
 }

@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Save, Activity, MonitorSmartphone, Volume2, Timer, Image, Trash2, Upload, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../components/ConfirmModal';
-import { Skeleton } from 'boneyard-js/react';
-
+import PageSkeleton from '../components/PageSkeleton';
 export default function PortalSettings() {
   const [data, setData] = useState(null);
   const [banners, setBanners] = useState([]);
@@ -163,8 +162,10 @@ export default function PortalSettings() {
 
   if (!loading && !data) return <div className="text-red-500">Error loading settings.</div>;
 
+  if (loading || !data) return <PageSkeleton type="form" />;
+
   return (
-    <Skeleton name="portal-settings" loading={loading}>
+    <>
       {data && (
         <div className="space-y-6 relative">
           <ConfirmModal 
@@ -454,6 +455,6 @@ export default function PortalSettings() {
       </form>
     </div>
       )}
-    </Skeleton>
+    </>
   );
 }

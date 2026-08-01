@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Ticket, Search, Clock, Zap, Save, CheckCircle, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Skeleton } from 'boneyard-js/react';
+import PageSkeleton from '../components/PageSkeleton';
 
 export default function Vouchers() {
   const [data, setData] = useState({ vouchers: [], voucher_enabled: false, voucher_min_time_minutes: 5, voucher_point_promos: [] });
@@ -115,8 +115,10 @@ export default function Vouchers() {
     return <div className="text-red-500">Error loading data.</div>;
   }
 
+  if (loading && (!data || !data.vouchers)) return <PageSkeleton type="table" />;
+
   return (
-    <Skeleton name="vouchers" loading={loading && (!data || !data.vouchers)}>
+    <>
       {data && data.vouchers && (
         <div className="space-y-6 relative">
       
@@ -308,6 +310,6 @@ export default function Vouchers() {
       </div>
       </div>
       )}
-    </Skeleton>
+    </>
   );
 }

@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Cpu, MemoryStick, HardDrive, Network, Timer, ArrowDownToLine, ArrowUpToLine, Usb, ArrowRightLeft, Server, Router, Globe } from 'lucide-react';
-import { Skeleton } from 'boneyard-js/react';
-
+import PageSkeleton from '../components/PageSkeleton';
 export default function SystemStats() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('orangepi');
@@ -139,8 +138,10 @@ export default function SystemStats() {
 
   const displayStats = activeTab === 'orangepi' ? piStats : routerStats;
 
+  if (loading) return <PageSkeleton type="stats" />;
+
   return (
-    <Skeleton name="system-stats" loading={loading}>
+    <>
     <div className="space-y-4 sm:space-y-6">
       
       {/* Tabs */}
@@ -284,6 +285,6 @@ export default function SystemStats() {
       </div>
 
     </div>
-    </Skeleton>
+    </>
   );
 }
