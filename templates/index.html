@@ -1176,10 +1176,21 @@
         });
     }
 
+    let transientTimer = null;
     function updateUI(data) {
         currentStatus = data.status;
         localStorage.setItem("piso_time_" + mac, data.time_remaining);
         localStorage.setItem("piso_status_" + mac, data.status);
+
+        // Prevent getting stuck in a transient state if WS message is missed or overwritten by a stale fetch
+        if (currentStatus === "pending_pause" || currentStatus === "pending_connect") {
+            if (!transientTimer) transientTimer = setInterval(fetchStatus, 1000);
+        } else {
+            if (transientTimer) {
+                clearInterval(transientTimer);
+                transientTimer = null;
+            }
+        }
         if (data.coin_rates) ratesStr = data.coin_rates;
 
         let bal = data.balance !== undefined ? data.balance : 0;
