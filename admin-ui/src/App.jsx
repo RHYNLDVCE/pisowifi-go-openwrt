@@ -263,9 +263,10 @@ export default function App() {
       config={{
         animation: "animation-1",
         background: "#e5e7eb",
-        borderRadius: "6px",
-        animationSpeed: 2,
-        exceptTags: ["div", "form", "table", "thead", "tbody", "tr", "td", "th", "ul", "li", "svg", "nav", "header", "main", "aside", "section", "article"]
+        borderRadius: "8px",
+        animationSpeed: 3,
+        textTagsMargin: "8px",
+        exceptTags: ["svg"]
       }}>
       <BrowserRouter>
          <Layout>
