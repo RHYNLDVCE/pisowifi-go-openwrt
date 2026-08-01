@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Activity, Search, Users, ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import CustomSelect from '../components/CustomSelect';
+import PageSkeleton from '../components/PageSkeleton';
 
 export default function Connections() {
   const [data, setData] = useState(null);
@@ -60,12 +61,7 @@ export default function Connections() {
   }, [searchQuery, sortBy, currentPage]);
 
   if (loading && !data) {
-    return (
-      <div className="flex items-center justify-center h-64 text-gray-500 dark:text-gray-400">
-        <Activity className="animate-spin w-8 h-8 mr-3" />
-        <span>Loading connections...</span>
-      </div>
-    );
+    return <PageSkeleton />;
   }
 
   if (!data) {

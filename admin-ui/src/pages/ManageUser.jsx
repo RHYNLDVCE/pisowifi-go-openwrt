@@ -4,6 +4,7 @@ import { ArrowLeft, Clock, ShieldBan, Trash2, Check, Activity, Star, ChevronDown
 import toast from 'react-hot-toast';
 import CustomSelect from '../components/CustomSelect';
 import ConfirmModal from '../components/ConfirmModal';
+import PageSkeleton from '../components/PageSkeleton';
 
 export default function ManageUser() {
   const { mac } = useParams();
@@ -60,12 +61,7 @@ export default function ManageUser() {
     }
   };
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-64 text-gray-500 dark:text-gray-400">
-      <Activity className="animate-spin w-8 h-8 mr-3" />
-      <span>Loading user details...</span>
-    </div>
-  );
+  if (loading) return <PageSkeleton />;
   if (!data || data.error) return <div className="text-red-500 font-bold text-xl">User not found.</div>;
 
   const { user, device_name, time_formatted, history } = data;

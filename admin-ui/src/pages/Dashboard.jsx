@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Users, Coins, Clock, TrendingUp, TrendingDown, BarChart2, Sun, Calendar, CalendarDays, Landmark, Activity } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Link } from 'react-router-dom';
+import PageSkeleton from '../components/PageSkeleton';
 
 export default function Dashboard() {
   const [data, setData] = useState(null);
@@ -21,12 +22,7 @@ export default function Dashboard() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64 text-gray-500 dark:text-gray-400">
-        <Activity className="animate-spin w-8 h-8 mr-3" />
-        <span>Loading dashboard...</span>
-      </div>
-    );
+    return <PageSkeleton />;
   }
 
   if (!data) {

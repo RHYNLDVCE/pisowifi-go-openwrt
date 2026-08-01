@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Ticket, Search, Clock, Zap, Save, CheckCircle, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import PageSkeleton from '../components/PageSkeleton';
 
 export default function Vouchers() {
   const [data, setData] = useState({ vouchers: [], voucher_enabled: false, voucher_min_time_minutes: 5, voucher_point_promos: [] });
@@ -111,7 +112,7 @@ export default function Vouchers() {
   const paginatedVouchers = sortedVouchers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   if (loading) {
-    return <div className="p-8 text-center text-gray-500">Loading vouchers...</div>;
+    return <PageSkeleton />;
   }
 
   return (

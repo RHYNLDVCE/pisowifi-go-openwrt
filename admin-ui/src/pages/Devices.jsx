@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Server, Wifi, RefreshCw, Activity } from 'lucide-react';
 import toast from 'react-hot-toast';
+import PageSkeleton from '../components/PageSkeleton';
 
 export default function Devices() {
   const [devices, setDevices] = useState([]);
@@ -110,12 +111,7 @@ export default function Devices() {
     }
   };
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-64 text-gray-500 dark:text-gray-400">
-      <Activity className="animate-spin w-8 h-8 mr-3" />
-      <span>Loading infrastructure...</span>
-    </div>
-  );
+  if (loading) return <PageSkeleton />;
 
   return (
     <div className="w-full">

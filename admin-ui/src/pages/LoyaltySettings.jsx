@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Save, Activity, Award, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../components/ConfirmModal';
+import PageSkeleton from '../components/PageSkeleton';
 
 export default function LoyaltySettings() {
   const [pointsConfig, setPointsConfig] = useState(null);
@@ -64,12 +65,7 @@ export default function LoyaltySettings() {
     setPointsConfig(newConfig);
   };
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-64 text-gray-500 dark:text-gray-400">
-      <Activity className="animate-spin w-8 h-8 mr-3" />
-      <span>Loading loyalty settings...</span>
-    </div>
-  );
+  if (loading) return <PageSkeleton />;
 
   if (!pointsConfig) return <div className="text-red-500">Error loading settings.</div>;
 

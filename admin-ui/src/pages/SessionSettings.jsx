@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Save, Activity, PauseCircle, Gift } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../components/ConfirmModal';
+import PageSkeleton from '../components/PageSkeleton';
 
 export default function SessionSettings() {
   const [data, setData] = useState(null);
@@ -62,12 +63,7 @@ export default function SessionSettings() {
     setSaving(false);
   };
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-64 text-gray-500 dark:text-gray-400">
-      <Activity className="animate-spin w-8 h-8 mr-3" />
-      <span>Loading session settings...</span>
-    </div>
-  );
+  if (loading) return <PageSkeleton />;
 
   if (!data) return <div className="text-red-500">Error loading settings.</div>;
 
