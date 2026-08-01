@@ -1,7 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Cpu, MemoryStick, HardDrive, Network, Timer, ArrowDownToLine, ArrowUpToLine, Usb, ArrowRightLeft, Server, Router, Globe } from 'lucide-react';
+import { Skeleton } from 'boneyard-js/react';
 
 export default function SystemStats() {
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('orangepi');
   const [piStats, setPiStats] = useState({
     cpu: '0', temp: '--',
@@ -117,8 +119,10 @@ export default function SystemStats() {
            router_lan_tx: rLanTx || lastState.current.router_lan_tx,
            time: now
         };
+        setLoading(false);
       } catch (err) {
         console.error("Error parsing WS data", err);
+        setLoading(false);
       }
     };
 
@@ -136,6 +140,7 @@ export default function SystemStats() {
   const displayStats = activeTab === 'orangepi' ? piStats : routerStats;
 
   return (
+    <Skeleton name="system-stats" loading={loading}>
     <div className="space-y-4 sm:space-y-6">
       
       {/* Tabs */}
@@ -277,6 +282,8 @@ export default function SystemStats() {
         </div>
 
       </div>
+
     </div>
+    </Skeleton>
   );
 }

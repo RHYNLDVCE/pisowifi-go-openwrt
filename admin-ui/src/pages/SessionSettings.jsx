@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Save, Activity, PauseCircle, Gift } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../components/ConfirmModal';
-import PageSkeleton from '../components/PageSkeleton';
+import { Skeleton } from 'boneyard-js/react';
 
 export default function SessionSettings() {
   const [data, setData] = useState(null);
@@ -63,13 +63,13 @@ export default function SessionSettings() {
     setSaving(false);
   };
 
-  if (loading) return <PageSkeleton />;
-
-  if (!data) return <div className="text-red-500">Error loading settings.</div>;
+  if (!loading && !data) return <div className="text-red-500">Error loading settings.</div>;
 
   return (
-    <div className="space-y-6 relative">
-      <ConfirmModal 
+    <Skeleton name="session-settings" loading={loading}>
+      {data && (
+        <div className="space-y-6 relative">
+          <ConfirmModal 
         isOpen={modalConfig.isOpen}
         title={modalConfig.title}
         message={modalConfig.message}
@@ -147,7 +147,9 @@ export default function SessionSettings() {
             <Save size={18} /> {saving ? 'Saving...' : 'Save Settings'}
           </button>
         </div>
-      </form>
-    </div>
+          </form>
+        </div>
+      )}
+    </Skeleton>
   );
 }

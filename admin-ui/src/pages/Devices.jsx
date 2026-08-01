@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Server, Wifi, RefreshCw, Activity } from 'lucide-react';
 import toast from 'react-hot-toast';
-import PageSkeleton from '../components/PageSkeleton';
+import { Skeleton } from 'boneyard-js/react';
 
 export default function Devices() {
   const [devices, setDevices] = useState([]);
@@ -111,11 +111,10 @@ export default function Devices() {
     }
   };
 
-  if (loading) return <PageSkeleton />;
-
   return (
-    <div className="w-full">
-      <div className="flex justify-end gap-2 mb-4">
+    <Skeleton name="devices" loading={loading}>
+      <div className="w-full">
+        <div className="flex justify-end gap-2 mb-4">
         <button 
           className="flex items-center gap-2 px-4 py-2 bg-black text-white dark:bg-white dark:text-black font-bold rounded hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors" 
           onClick={() => setAddDeviceModalOpen(true)}
@@ -287,5 +286,6 @@ export default function Devices() {
         </div>
       )}
     </div>
+    </Skeleton>
   );
 }

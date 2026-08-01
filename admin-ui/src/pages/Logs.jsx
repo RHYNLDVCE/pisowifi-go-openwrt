@@ -1,9 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Terminal, Search, X } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
+import { Skeleton } from 'boneyard-js/react';
 
 export default function Logs() {
   const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
   const limit = 100;
@@ -54,7 +56,9 @@ export default function Logs() {
           }
           setTotal(data.total);
         }
-      });
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, [searchTerm, activeFilter, offset]);
 
   useEffect(() => {
@@ -150,6 +154,7 @@ export default function Logs() {
   };
 
   return (
+    <Skeleton name="logs" loading={loading}>
     <div className="w-full">
       {/* Filter and Search Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
@@ -237,5 +242,6 @@ export default function Logs() {
         </div>
       </div>
     </div>
+    </Skeleton>
   );
 }

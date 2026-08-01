@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Users, Coins, Clock, TrendingUp, TrendingDown, BarChart2, Sun, Calendar, CalendarDays, Landmark, Activity } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Link } from 'react-router-dom';
-import PageSkeleton from '../components/PageSkeleton';
+import { Skeleton } from 'boneyard-js/react';
 
 export default function Dashboard() {
   const [data, setData] = useState(null);
@@ -21,20 +21,18 @@ export default function Dashboard() {
       });
   }, []);
 
-  if (loading) {
-    return <PageSkeleton />;
-  }
-
-  if (!data) {
+  if (!loading && !data) {
     return <div className="text-red-500">Error loading data.</div>;
   }
 
-  const { stats } = data;
+  const { stats } = data || {};
 
   return (
-    <div className="space-y-6">
-      
-      {/* 6 KPI Cards (Enterprise Style) */}
+    <Skeleton name="dashboard" loading={loading}>
+      {data && (
+        <div className="space-y-6">
+          
+          {/* 6 KPI Cards (Enterprise Style) */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {[
           { label: 'Total All Time', value: stats.total, icon: <Coins className="w-4 h-4 sm:w-5 sm:h-5 text-gray-900 dark:text-white" /> },
@@ -115,7 +113,8 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </div>
       </div>
-
-    </div>
+      </div>
+      )}
+    </Skeleton>
   );
 }

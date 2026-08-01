@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Activity, Search, Users, ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { Skeleton } from 'boneyard-js/react';
 import CustomSelect from '../components/CustomSelect';
-import PageSkeleton from '../components/PageSkeleton';
+
 
 export default function Connections() {
   const [data, setData] = useState(null);
@@ -60,22 +61,18 @@ export default function Connections() {
     return () => clearTimeout(timer);
   }, [searchQuery, sortBy, currentPage]);
 
-  if (loading && !data) {
-    return <PageSkeleton />;
-  }
-
-  if (!data) {
+  if (!loading && !data) {
     return <div className="text-red-500">Error loading data.</div>;
   }
 
-  const { users, total_pages, current_page, total_filtered, total_users, active_users } = data;
+  const { users, total_pages, current_page, total_filtered, total_users, active_users } = data || {};
 
   const statusOrder = { connected: 1, paused: 2, expired: 3, new: 4 };
   const getStatusWeight = (status) => statusOrder[status?.toLowerCase()] || 5;
 
   // The backend already filtered and paginated the data, so we only have ~10 users here.
   // We still need to sort them because JS objects (users map) don't guarantee key order.
-  const displayMacs = Object.keys(users).sort((a, b) => {
+  const displayMacs = Object.keys(users || {}).sort((a, b) => {
     const ua = users[a];
     const ub = users[b];
     if (sortBy === 'status') {
@@ -97,8 +94,10 @@ export default function Connections() {
   const safeCurrentPage = current_page || 1;
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-md shadow-sm flex flex-col p-6 md:p-8">
+    <Skeleton name="connections" loading={loading && !data}>
+      {data && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-md shadow-sm flex flex-col p-6 md:p-8">
         <div className="flex flex-wrap gap-4 justify-between items-center mb-6 pb-2 border-b border-gray-200 dark:border-zinc-800">
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex">
@@ -284,5 +283,7 @@ export default function Connections() {
         </div>
       </div>
     </div>
+      )}
+    </Skeleton>
   );
 }

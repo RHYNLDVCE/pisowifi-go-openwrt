@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Ticket, Search, Clock, Zap, Save, CheckCircle, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
-import PageSkeleton from '../components/PageSkeleton';
+import { Skeleton } from 'boneyard-js/react';
 
 export default function Vouchers() {
   const [data, setData] = useState({ vouchers: [], voucher_enabled: false, voucher_min_time_minutes: 5, voucher_point_promos: [] });
@@ -111,12 +111,14 @@ export default function Vouchers() {
   
   const paginatedVouchers = sortedVouchers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  if (loading) {
-    return <PageSkeleton />;
+  if (!loading && (!data || !data.vouchers)) {
+    return <div className="text-red-500">Error loading data.</div>;
   }
 
   return (
-    <div className="space-y-6 relative">
+    <Skeleton name="vouchers" loading={loading && (!data || !data.vouchers)}>
+      {data && data.vouchers && (
+        <div className="space-y-6 relative">
       
       {/* Settings Form */}
       <form onSubmit={handleSaveSettings} className="bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-md shadow-sm p-6 md:p-8">
@@ -304,6 +306,8 @@ export default function Vouchers() {
           </div>
         )}
       </div>
-    </div>
+      </div>
+      )}
+    </Skeleton>
   );
 }

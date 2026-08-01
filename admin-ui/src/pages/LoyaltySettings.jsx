@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Save, Activity, Award, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../components/ConfirmModal';
-import PageSkeleton from '../components/PageSkeleton';
+import { Skeleton } from 'boneyard-js/react';
 
 export default function LoyaltySettings() {
   const [pointsConfig, setPointsConfig] = useState(null);
@@ -65,13 +65,13 @@ export default function LoyaltySettings() {
     setPointsConfig(newConfig);
   };
 
-  if (loading) return <PageSkeleton />;
-
-  if (!pointsConfig) return <div className="text-red-500">Error loading settings.</div>;
+  if (!loading && !pointsConfig) return <div className="text-red-500">Error loading settings.</div>;
 
   return (
-    <div className="space-y-6 relative">
-      <ConfirmModal 
+    <Skeleton name="loyalty-settings" loading={loading}>
+      {pointsConfig && (
+        <div className="space-y-6 relative">
+          <ConfirmModal 
         isOpen={modalConfig.isOpen}
         title={modalConfig.title}
         message={modalConfig.message}
@@ -159,5 +159,7 @@ export default function LoyaltySettings() {
         </div>
       </form>
     </div>
+      )}
+    </Skeleton>
   );
 }

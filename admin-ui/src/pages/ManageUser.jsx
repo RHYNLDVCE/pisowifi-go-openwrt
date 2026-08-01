@@ -4,7 +4,7 @@ import { ArrowLeft, Clock, ShieldBan, Trash2, Check, Activity, Star, ChevronDown
 import toast from 'react-hot-toast';
 import CustomSelect from '../components/CustomSelect';
 import ConfirmModal from '../components/ConfirmModal';
-import PageSkeleton from '../components/PageSkeleton';
+import { Skeleton } from 'boneyard-js/react';
 
 export default function ManageUser() {
   const { mac } = useParams();
@@ -61,13 +61,14 @@ export default function ManageUser() {
     }
   };
 
-  if (loading) return <PageSkeleton />;
-  if (!data || data.error) return <div className="text-red-500 font-bold text-xl">User not found.</div>;
+  if (!loading && (!data || data.error)) return <div className="text-red-500 font-bold text-xl">User not found.</div>;
 
-  const { user, device_name, time_formatted, history } = data;
+  const { user, device_name, time_formatted, history } = data || {};
 
   return (
-    <div className="space-y-6 w-full relative">
+    <Skeleton name="manage-user" loading={loading}>
+      {data && !data.error && (
+        <div className="space-y-6 w-full relative">
 
       <ConfirmModal 
         isOpen={modalConfig.isOpen}
@@ -302,5 +303,7 @@ export default function ManageUser() {
         </div>
       </div>
     </div>
+      )}
+    </Skeleton>
   );
 }

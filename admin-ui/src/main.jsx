@@ -8,6 +8,7 @@ import '@fontsource/outfit/600.css';
 import '@fontsource/outfit/700.css';
 import '@fontsource/outfit/800.css';
 import toast from 'react-hot-toast';
+import './bones/registry'
 import App from './App.jsx'
 
 const originalFetch = window.fetch;
