@@ -164,7 +164,17 @@ func GetSystemLogs(limit, offset int, logType, query string) LogResult {
 	// Filter by type
 	if logType != "" && strings.ToUpper(logType) != "ALL" {
 		cat := strings.ToUpper(logType)
-		if allowed, ok := typeMap[cat]; ok {
+		if cat == "ERROR" {
+			var filtered []LogEntry
+			for _, e := range parsed {
+				t := strings.ToUpper(e.Type)
+				m := strings.ToUpper(e.Message)
+				if strings.Contains(t, "ERROR") || strings.Contains(t, "FAIL") || strings.Contains(t, "TIMEOUT") || strings.Contains(m, "[ERROR]") {
+					filtered = append(filtered, e)
+				}
+			}
+			parsed = filtered
+		} else if allowed, ok := typeMap[cat]; ok {
 			allowedSet := map[string]bool{}
 			for _, t := range allowed {
 				allowedSet[t] = true

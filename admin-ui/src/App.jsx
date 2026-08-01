@@ -27,6 +27,7 @@ function Layout({ children }) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [errorCount, setErrorCount] = useState(0);
+  const [unseenErrorCount, setUnseenErrorCount] = useState(0);
 
   useEffect(() => {
     const fetchErrorCount = () => {
@@ -35,6 +36,8 @@ function Layout({ children }) {
         .then(data => {
           if (data && typeof data.total !== 'undefined') {
             setErrorCount(data.total);
+            const lastSeen = parseInt(localStorage.getItem('last_seen_errors') || '0', 10);
+            setUnseenErrorCount(Math.max(0, data.total - lastSeen));
           }
         })
         .catch(() => {});
@@ -44,6 +47,13 @@ function Layout({ children }) {
     const interval = setInterval(fetchErrorCount, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (location.pathname === '/admin/logs') {
+      localStorage.setItem('last_seen_errors', errorCount.toString());
+      setUnseenErrorCount(0);
+    }
+  }, [location.pathname, errorCount]);
 
   useEffect(() => {
     if (darkMode) {
@@ -79,7 +89,7 @@ function Layout({ children }) {
     { path: '/admin/vouchers', icon: <Ticket size={20} />, label: 'Vouchers' },
     { path: '/admin/devices', icon: <Activity size={20} />, label: 'Infrastructure' },
     { path: '/admin/maintenance', icon: <Settings size={20} />, label: 'System Maintenance' },
-    { path: '/admin/logs', icon: <ShieldAlert size={20} />, label: 'System Logs', badge: errorCount },
+    { path: '/admin/logs', icon: <ShieldAlert size={20} />, label: 'System Logs', badge: unseenErrorCount },
   ];
 
   const currentNavItem = navItems.find(item => item.path === location.pathname);
@@ -274,9 +284,9 @@ function Layout({ children }) {
         >
           <div className="relative">
             <Menu size={sidebarOpen ? 24 : 22} />
-            {errorCount > 0 && (
+            {unseenErrorCount > 0 && (
               <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[8px] font-bold px-1 min-w-[14px] h-[14px] flex items-center justify-center rounded-full border border-white dark:border-zinc-950">
-                {errorCount > 99 ? '99+' : errorCount}
+                {unseenErrorCount > 99 ? '99+' : unseenErrorCount}
               </span>
             )}
           </div>
