@@ -866,19 +866,18 @@
             let res = await fetch(`/status?mac=${mac}&_t=${Date.now()}`);
             let data = await res.json();
             
-            // If we received a fresh WebSocket update within the last 2 seconds, 
-            // ignore this HTTP fetch to prevent stale state from overwriting it.
-            if (Date.now() - lastWsUpdate < 2000) return;
-
-            localTime = data.time_remaining;
-
-            if (data.slot_seconds > 0 && !isModalOpen) {
-                handleSlotLogic(data);
-            }
-            updateUI(data);
+            // Extract non-status fields that WS doesn't provide
             if (data.points_enabled !== undefined) pointsEnabled = data.points_enabled;
             if (data.coin_point_map) pointMap = data.coin_point_map;
-            if (data.slot_seconds > 0) handleSlotLogic(data);
+            if (data.slot_seconds > 0 && !isModalOpen) handleSlotLogic(data);
+            if (data.coin_rates) ratesStr = data.coin_rates;
+
+            // If we received a fresh WebSocket update within the last 2 seconds, 
+            // skip updating the core connection status to prevent stale overwrites.
+            if (Date.now() - lastWsUpdate < 1000) return;
+
+            localTime = data.time_remaining;
+            updateUI(data);
         } catch (e) { }
     }
 
@@ -1146,9 +1145,24 @@
     }
 
     function pauseInternet() {
-        currentStatus = "paused";
-        updateUI({ status: "paused", time_remaining: localTime, is_busy: false, balance: 0 });
-        fetch(`/pause?mac=${mac}`, { method: 'POST' }).then(r => r.json());
+        currentStatus = "pending_pause";
+        updateUI({ status: "pending_pause", time_remaining: localTime, is_busy: false, balance: 0 });
+        fetch(`/pause?mac=${mac}`, { method: 'POST' }).then(r => r.json()).then(d => {
+            if (d.result !== "success") {
+                updateUI({ status: "connected", time_remaining: localTime, is_busy: false, balance: 0 });
+                showToast("Failed to initiate pause on server.", "error");
+            } else {
+                // If the router successfully blocks us, it drops our WebSocket connection.
+                // We schedule manual fetchStatus polls to heal the UI because we won't get the WS 'paused' message.
+                // These run independently. The very first one that catches the new 'paused' state will update the UI.
+                setTimeout(fetchStatus, 500);
+                setTimeout(fetchStatus, 1500);
+                setTimeout(fetchStatus, 3000);
+            }
+        }).catch(err => {
+            updateUI({ status: "connected", time_remaining: localTime, is_busy: false, balance: 0 });
+            showToast("Network Error: Try refreshing manually.", "error");
+        });
     }
 
     function claimFreeTime() { document.getElementById('confirmModal').style.display = 'flex'; }
