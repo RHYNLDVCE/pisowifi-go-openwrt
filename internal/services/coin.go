@@ -78,7 +78,7 @@ func ProcessCoin(pulses int, mac string) {
 	})
 	db.AddSale(mac, amount)
 
-	logger.SystemLog(fmt.Sprintf("[COIN_SUCCESS] Credited %d to %s. Balance: %d", amount, mac, user.Balance))
+	logger.SystemLog(fmt.Sprintf("[COIN-SUCCESS] Credited %d to %s. Balance: %d", amount, mac, user.Balance))
 
 	// Re-read updated balance for WS messages
 	updated, _ := state.Users.Get(mac)

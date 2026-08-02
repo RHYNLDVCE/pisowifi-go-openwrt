@@ -27,7 +27,7 @@ func EnableSlot(mac string) (string, int, int, float64, int) {
 		config.Update(func(cfg *config.AppConfig) {
 			cfg.SlotExpiryTimestamp = float64(time.Now().Unix()) + float64(cfg.SlotTimeout)
 		})
-		logger.SystemLog(fmt.Sprintf("[PORTAL_EVENT] SLOT OPENED by Device: %s", mac))
+		logger.SystemLog(fmt.Sprintf("[PORTAL-EVENT] SLOT OPENED by Device: %s", mac))
 
 		bal := 0
 		pts := 0.0

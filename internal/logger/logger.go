@@ -95,11 +95,11 @@ func SystemLog(msg string) {
 }
 
 // AuditLog logs administrator actions.
-// Format: [timestamp] [ADMIN_AUDIT] [ip | mac] action: details
+// Format: [timestamp] [ADMIN-AUDIT] [ip | mac] action: details
 func AuditLog(action, ip, mac, details string) {
 	if infoLog == nil {
-		fmt.Printf("[ADMIN_AUDIT] [%s | %s] %s: %s\n", ip, mac, action, details)
+		fmt.Printf("[ADMIN-AUDIT] [%s | %s] %s: %s\n", ip, mac, action, details)
 		return
 	}
-	infoLog.Printf("[%s] [ADMIN_AUDIT] [%s | %s] %s: %s", now(), ip, mac, action, details)
+	infoLog.Printf("[%s] [ADMIN-AUDIT] [%s | %s] %s: %s", now(), ip, mac, action, details)
 }

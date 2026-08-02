@@ -122,10 +122,10 @@ type LogResult struct {
 }
 
 var typeMap = map[string][]string{
-	"COIN":     {"COIN_INSERT", "COIN_SUCCESS"},
-	"PORTAL":   {"PORTAL_EVENT"},
-	"ADMIN":    {"ADMIN_AUDIT"},
-	"SECURITY": {"SECURITY_ALERT", "CRITICAL"},
+	"COIN":     {"COIN-INSERT", "COIN-SUCCESS"},
+	"PORTAL":   {"PORTAL-EVENT"},
+	"ADMIN":    {"ADMIN-AUDIT"},
+	"SECURITY": {"SECURITY-ALERT", "CRITICAL"},
 }
 
 func GetSystemLogs(limit, offset int, logType, query string) LogResult {

@@ -89,7 +89,7 @@ export default function Logs() {
       case 'ERROR': return 'text-red-500 font-bold';
       case 'WARNING': return 'text-amber-500 font-bold';
       case 'SUCCESS': return 'text-green-500 font-bold';
-      case 'SECURITY_ALERT': return 'text-red-500 font-bold'; // Changed to red to match security
+      case 'SECURITY-ALERT': return 'text-red-500 font-bold'; // Changed to red to match security
       default: return 'text-gray-500 dark:text-gray-400 font-semibold';
     }
   };

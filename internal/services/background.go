@@ -83,7 +83,7 @@ func coinListener() {
 				if mac == "" {
 					userLog = "Unknown_Device"
 				}
-				logger.SystemLog(fmt.Sprintf("[COIN_INSERT] %d pulse(s) by Device: %s", coinValue, userLog))
+				logger.SystemLog(fmt.Sprintf("[COIN-INSERT] %d pulse(s) by Device: %s", coinValue, userLog))
 
 				if mac != "" {
 					ProcessCoin(coinValue, mac)
