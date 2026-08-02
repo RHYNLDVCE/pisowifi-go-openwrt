@@ -8,6 +8,7 @@ import { SkeletonWrapper } from 'react-skeletonify';
 export default function Connections() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const searchQuery = searchParams.get('q') || '';
@@ -40,7 +41,9 @@ export default function Connections() {
   };
 
   useEffect(() => {
-    setLoading(true);
+    if (!data) setLoading(true);
+    setIsFetching(true);
+    
     const timer = setTimeout(() => {
       const params = new URLSearchParams();
       if (searchQuery) params.set('search', searchQuery);
@@ -52,12 +55,15 @@ export default function Connections() {
         .then(json => {
           setData(json);
           setLoading(false);
+          setIsFetching(false);
         })
         .catch(err => {
           console.error("Failed to fetch dashboard data", err);
           setLoading(false);
+          setIsFetching(false);
         });
     }, 300);
+    
     return () => clearTimeout(timer);
   }, [searchQuery, sortBy, currentPage]);
 
