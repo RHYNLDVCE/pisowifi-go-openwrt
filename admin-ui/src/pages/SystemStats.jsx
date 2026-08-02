@@ -4,7 +4,7 @@ import { SkeletonWrapper } from 'react-skeletonify';
 
 export default function SystemStats() {
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('orangepi');
+  const [activeTab, setActiveTab] = useState('router');
   const [piStats, setPiStats] = useState({
     cpu: '0', temp: '--',
     ram: '0', ram_used: '0', ram_total: '0',
@@ -146,16 +146,16 @@ export default function SystemStats() {
       {/* Tabs */}
       <div className="flex space-x-2 border-b border-gray-200 dark:border-zinc-800 pb-0">
         <button
-          onClick={() => setActiveTab('orangepi')}
-          className={`flex items-center gap-2 px-6 py-3 text-sm font-bold rounded-t-md transition-colors ${activeTab === 'orangepi' ? 'bg-white dark:bg-zinc-950 border-t border-l border-r border-gray-200 dark:border-zinc-800 text-gray-900 dark:text-white relative top-[1px]' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
-        >
-          <Server size={18} /> Orange Pi Core
-        </button>
-        <button
           onClick={() => setActiveTab('router')}
           className={`flex items-center gap-2 px-6 py-3 text-sm font-bold rounded-t-md transition-colors ${activeTab === 'router' ? 'bg-white dark:bg-zinc-950 border-t border-l border-r border-gray-200 dark:border-zinc-800 text-gray-900 dark:text-white relative top-[1px]' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
         >
           <Router size={18} /> OpenWrt Router
+        </button>
+        <button
+          onClick={() => setActiveTab('orangepi')}
+          className={`flex items-center gap-2 px-6 py-3 text-sm font-bold rounded-t-md transition-colors ${activeTab === 'orangepi' ? 'bg-white dark:bg-zinc-950 border-t border-l border-r border-gray-200 dark:border-zinc-800 text-gray-900 dark:text-white relative top-[1px]' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+        >
+          <Server size={18} /> Orange Pi Core
         </button>
       </div>
       
