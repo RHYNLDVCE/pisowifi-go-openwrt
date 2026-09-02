@@ -3,6 +3,7 @@ import { Users, Coins, Clock, TrendingUp, TrendingDown, BarChart2, Sun, Calendar
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Link } from 'react-router-dom';
 import LoadingSpinner from '../components/LoadingSpinner';
+import useAdminEvents from '../hooks/useAdminEvents';
 
 export default function Dashboard() {
   const [data, setData] = useState(null);
@@ -20,6 +21,16 @@ export default function Dashboard() {
         setLoading(false);
       });
   }, []);
+
+  // Real-time sales updates via SSE
+  useAdminEvents({
+    sales_update: (freshStats) => {
+      setData(prev => ({
+        ...prev,
+        stats: freshStats
+      }));
+    }
+  });
 
   if (loading && !data) {
     return <LoadingSpinner message="Loading dashboard metrics..." />;

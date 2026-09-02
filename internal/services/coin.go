@@ -6,6 +6,7 @@ import (
 
 	"pisowifi/internal/config"
 	"pisowifi/internal/db"
+	"pisowifi/internal/events"
 	"pisowifi/internal/logger"
 	"pisowifi/internal/state"
 )
@@ -78,6 +79,9 @@ func ProcessCoin(pulses int, mac string) {
 	})
 	db.AddSale(mac, amount)
 	InvalidateDashboardStatsCache()
+
+	// Broadcast real-time sales update to admin Dashboard
+	events.Global.Broadcast("sales_update", GetDashboardStats())
 
 	logger.SystemLog(fmt.Sprintf("[COIN-SUCCESS] Credited %d to %s. Balance: %d", amount, mac, user.Balance))
 

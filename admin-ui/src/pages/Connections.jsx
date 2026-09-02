@@ -4,6 +4,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 
 import CustomSelect from '../components/CustomSelect';
 import LoadingSpinner from '../components/LoadingSpinner';
+import useAdminEvents from '../hooks/useAdminEvents';
 
 export default function Connections() {
   const [data, setData] = useState(null);
@@ -66,6 +67,120 @@ export default function Connections() {
     
     return () => clearTimeout(timer);
   }, [searchQuery, sortBy, currentPage]);
+
+  // Real-time updates for user connections and status via SSE
+  useAdminEvents({
+    user_connected: (payload) => {
+      setData(prev => {
+        if (!prev) return prev;
+        const existing = prev.users?.[payload.mac] || {};
+        return {
+          ...prev,
+          active_users: payload.active_users !== undefined ? payload.active_users : (prev.active_users || 0) + 1,
+          total_users: prev.users?.[payload.mac] ? prev.total_users : (prev.total_users || 0) + 1,
+          users: {
+            ...prev.users,
+            [payload.mac]: {
+              ...existing,
+              ip: payload.ip || existing.ip,
+              time: payload.time !== undefined ? payload.time : existing.time,
+              time_formatted: payload.time_formatted || existing.time_formatted,
+              status: payload.status || 'connected',
+              status_short: payload.status_short || 'c',
+              balance: payload.balance !== undefined ? payload.balance : existing.balance,
+              points: payload.points !== undefined ? payload.points : existing.points,
+              device_name: payload.device_name || existing.device_name,
+            }
+          }
+        };
+      });
+    },
+    user_update: (payload) => {
+      setData(prev => {
+        if (!prev || !prev.users) return prev;
+        const existing = prev.users[payload.mac];
+        if (!existing) {
+          if (payload.active_users !== undefined) {
+            return { ...prev, active_users: payload.active_users };
+          }
+          return prev;
+        }
+        return {
+          ...prev,
+          active_users: payload.active_users !== undefined ? payload.active_users : prev.active_users,
+          users: {
+            ...prev.users,
+            [payload.mac]: {
+              ...existing,
+              status: payload.status || existing.status,
+              status_short: payload.status ? payload.status[0] : existing.status_short,
+              time: payload.time !== undefined ? payload.time : existing.time,
+              time_formatted: payload.time_formatted || existing.time_formatted,
+              balance: payload.balance !== undefined ? payload.balance : existing.balance,
+              points: payload.points !== undefined ? payload.points : existing.points,
+            }
+          }
+        };
+      });
+    },
+    user_expired: (payload) => {
+      setData(prev => {
+        if (!prev) return prev;
+        const existing = prev.users?.[payload.mac];
+        return {
+          ...prev,
+          active_users: payload.active_users !== undefined ? payload.active_users : Math.max(0, (prev.active_users || 1) - 1),
+          users: existing ? {
+            ...prev.users,
+            [payload.mac]: {
+              ...existing,
+              status: 'expired',
+              status_short: 'e',
+              time: 0,
+              time_formatted: '00:00:00'
+            }
+          } : prev.users
+        };
+      });
+    },
+    user_deleted: (payload) => {
+      setData(prev => {
+        if (!prev || !prev.users) return prev;
+        const copy = { ...prev.users };
+        delete copy[payload.mac];
+        return {
+          ...prev,
+          active_users: payload.active_users !== undefined ? payload.active_users : prev.active_users,
+          total_users: Math.max(0, (prev.total_users || 1) - 1),
+          users: copy
+        };
+      });
+    },
+    batch_time_sync: (payload) => {
+      setData(prev => {
+        if (!prev || !prev.users) return prev;
+        let changed = false;
+        const updatedUsers = { ...prev.users };
+        for (const [mac, uData] of Object.entries(payload.users || {})) {
+          if (updatedUsers[mac]) {
+            changed = true;
+            updatedUsers[mac] = {
+              ...updatedUsers[mac],
+              time: uData.time,
+              time_formatted: uData.time_formatted,
+              status: uData.status,
+              status_short: uData.status ? uData.status[0] : updatedUsers[mac].status_short
+            };
+          }
+        }
+        return {
+          ...prev,
+          active_users: payload.active_users !== undefined ? payload.active_users : prev.active_users,
+          users: changed ? updatedUsers : prev.users
+        };
+      });
+    }
+  });
 
   if (loading && !data) {
     return <LoadingSpinner message="Loading connections..." />;

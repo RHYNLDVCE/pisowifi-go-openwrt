@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -112,6 +113,9 @@ func main() {
 
 	app.Use(fiberrecover.New())
 	app.Use(compress.New(compress.Config{
+		Next: func(c *fiber.Ctx) bool {
+			return strings.HasPrefix(c.Path(), "/admin/api/events")
+		},
 		Level: compress.LevelBestSpeed,
 	}))
 

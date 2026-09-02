@@ -8,6 +8,7 @@ import (
 	paho "github.com/eclipse/paho.mqtt.golang"
 
 	"pisowifi/internal/db"
+	"pisowifi/internal/events"
 	"pisowifi/internal/logger"
 	mqttcmd "pisowifi/internal/mqtt"
 	"pisowifi/internal/state"
@@ -63,6 +64,11 @@ func handleAckBlock(_ paho.Client, msg paho.Message) {
 				"balance":        u.Balance,
 				"points":         u.Points,
 			})
+			events.Global.Broadcast("user_update", map[string]interface{}{
+				"mac":    mac,
+				"status": u.Status,
+				"time":   u.Time,
+			})
 		}
 		logger.SystemLog("[ACK] Router successfully blocked: " + mac)
 	} else {
@@ -101,6 +107,16 @@ func handleAckAllow(_ paho.Client, msg paho.Message) {
 				"time_remaining": u.Time,
 				"balance":        0,
 				"points":         u.Points,
+			})
+			events.Global.Broadcast("user_connected", map[string]interface{}{
+				"mac":          mac,
+				"ip":           u.IP,
+				"time":         u.Time,
+				"status":       "connected",
+				"status_short": "c",
+				"balance":      u.Balance,
+				"points":       u.Points,
+				"device_name":  u.Hostname,
 			})
 		}
 		logger.SystemLog("[ACK] Router successfully allowed: " + mac)

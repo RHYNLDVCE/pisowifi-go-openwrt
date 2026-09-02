@@ -7,6 +7,7 @@ import (
 
 	"pisowifi/internal/config"
 	"pisowifi/internal/db"
+	"pisowifi/internal/events"
 	"pisowifi/internal/hardware"
 	"pisowifi/internal/logger"
 	"pisowifi/internal/mqtt"
@@ -115,6 +116,10 @@ func TickUsers(ticks int) {
 					if updated, ok := state.Users.Get(mac); ok {
 						toSync = append(toSync, toDBRecord(mac, updated))
 					}
+					events.Global.Broadcast("user_expired", map[string]interface{}{
+						"mac":          mac,
+						"active_users": CountActiveUsers(),
+					})
 					return
 				}
 			}
@@ -143,6 +148,26 @@ func TickUsers(ticks int) {
 
 	if len(toSync) > 0 {
 		db.SyncMultipleUsers(toSync)
+	}
+
+	// Broadcast lightweight timer sync to admin dashboard every 3 ticks if admins are connected
+	if ticks%3 == 0 && events.Global.ClientCount() > 0 {
+		activeBatch := make(map[string]map[string]interface{})
+		activeCount := 0
+		state.Users.Range(func(m string, u *state.UserRecord) {
+			if u.Status == "connected" {
+				activeCount++
+				activeBatch[m] = map[string]interface{}{
+					"time":           u.Time,
+					"time_formatted": FormatHumanTime(u.Time),
+					"status":         u.Status,
+				}
+			}
+		})
+		events.Global.Broadcast("batch_time_sync", map[string]interface{}{
+			"users":        activeBatch,
+			"active_users": activeCount,
+		})
 	}
 }
 

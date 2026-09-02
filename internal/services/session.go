@@ -7,6 +7,7 @@ import (
 
 	"pisowifi/internal/config"
 	"pisowifi/internal/db"
+	"pisowifi/internal/events"
 	"pisowifi/internal/hardware"
 	"pisowifi/internal/logger"
 	"pisowifi/internal/network"
@@ -96,6 +97,17 @@ func ConnectUser(mac string) string {
 			"balance":        0,
 			"points":         u.Points,
 		})
+		events.Global.Broadcast("user_update", map[string]interface{}{
+			"mac":            mac,
+			"ip":             u.IP,
+			"time":           u.Time,
+			"time_formatted": FormatHumanTime(u.Time),
+			"status":         "pending_connect",
+			"balance":        0,
+			"points":         u.Points,
+			"device_name":    u.Hostname,
+			"active_users":   CountActiveUsers(),
+		})
 	}
 	return "success"
 }
@@ -145,6 +157,13 @@ func PauseUser(mac string) string {
 			"time_remaining": u.Time,
 			"balance":        u.Balance,
 			"points":         u.Points,
+		})
+		events.Global.Broadcast("user_update", map[string]interface{}{
+			"mac":            mac,
+			"status":         "paused",
+			"time":           u.Time,
+			"time_formatted": FormatHumanTime(u.Time),
+			"active_users":   CountActiveUsers(),
 		})
 	}
 	return "success"

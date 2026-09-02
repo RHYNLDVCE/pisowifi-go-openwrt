@@ -9,6 +9,7 @@ import (
 
 	"pisowifi/internal/config"
 	"pisowifi/internal/db"
+	"pisowifi/internal/events"
 	"pisowifi/internal/infrastructure"
 	"pisowifi/internal/network"
 	"pisowifi/internal/state"
@@ -138,6 +139,13 @@ func ManageUserTime(mac string, amount int, unit string, action string) {
 
 	if u, ok := state.Users.Get(mac); ok {
 		db.SyncUser(toDBRecord(mac, u))
+		events.Global.Broadcast("user_update", map[string]interface{}{
+			"mac":            mac,
+			"time":           u.Time,
+			"time_formatted": FormatHumanTime(u.Time),
+			"status":         u.Status,
+			"active_users":   CountActiveUsers(),
+		})
 	}
 }
 
@@ -151,6 +159,11 @@ func UpdateUserStatus(mac, newStatus string) {
 	})
 	if u, ok := state.Users.Get(mac); ok {
 		db.SyncUser(toDBRecord(mac, u))
+		events.Global.Broadcast("user_update", map[string]interface{}{
+			"mac":          mac,
+			"status":       u.Status,
+			"active_users": CountActiveUsers(),
+		})
 	}
 }
 
@@ -161,6 +174,21 @@ func DeleteUser(mac string) {
 	}
 	state.Users.Delete(mac)
 	db.DeleteUser(mac)
+	events.Global.Broadcast("user_deleted", map[string]interface{}{
+		"mac":          mac,
+		"active_users": CountActiveUsers(),
+	})
+}
+
+// CountActiveUsers counts how many users are currently connected
+func CountActiveUsers() int {
+	activeCount := 0
+	state.Users.Range(func(_ string, u *state.UserRecord) {
+		if u.Status == "connected" {
+			activeCount++
+		}
+	})
+	return activeCount
 }
 
 // GetUsersList retrieves and formats users strictly for the Connections page (zero pings, in-memory)

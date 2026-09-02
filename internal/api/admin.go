@@ -2,6 +2,7 @@ package api
 
 import (
 	"archive/zip"
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 
 	"pisowifi/internal/config"
 	"pisowifi/internal/db"
+	"pisowifi/internal/events"
 	"pisowifi/internal/infrastructure"
 	"pisowifi/internal/logger"
 	"pisowifi/internal/mqtt"
@@ -23,6 +25,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/websocket/v2"
+	"github.com/valyala/fasthttp"
 )
 
 // RegisterAdminRoutes mounts all admin/auth routes behind the security middleware.
@@ -34,6 +37,7 @@ func RegisterAdminRoutes(app *fiber.App) {
 
 	// Protected admin group
 	admin := app.Group("/admin", security.AdminMiddleware)
+	admin.Get("/api/events", streamAdminEvents)
 	admin.Get("/api/dashboard_data", getDashboardData)
 	admin.Get("/api/dashboard_stats", getDashboardStatsAPI)
 	admin.Get("/api/users", getUsersAPI)
@@ -183,6 +187,9 @@ func getSettingsAPI(c *fiber.Ctx) error {
 		"portal_subtitle_size":  cfg.PortalSubtitleSize,
 		"open_nat_enabled":      cfg.OpenNATEnabled,
 		"custom_ttl":            cfg.CustomTTL,
+		"custom_device_names":   cfg.CustomDeviceNames,
+		"voucher_enabled":       cfg.VoucherEnabled,
+		"voucher_min_time_mins": cfg.VoucherMinTimeMinutes,
 		"banner_files":          bannerFiles,
 		"free_time_enabled":     cfg.FreeTimeEnabled,
 		"free_time_duration":    cfg.FreeTimeDuration,
@@ -190,6 +197,52 @@ func getSettingsAPI(c *fiber.Ctx) error {
 		"sound_insert_selected": cfg.SoundInsert,
 		"sound_coin_selected":   cfg.SoundCoin,
 	})
+}
+
+func streamAdminEvents(c *fiber.Ctx) error {
+	c.Set("Content-Type", "text/event-stream")
+	c.Set("Cache-Control", "no-cache")
+	c.Set("Connection", "keep-alive")
+	c.Set("Transfer-Encoding", "chunked")
+
+	c.Context().SetBodyStreamWriter(fasthttp.StreamWriter(func(w *bufio.Writer) {
+		ch := events.Global.Subscribe()
+		defer events.Global.Unsubscribe(ch)
+
+		// Initial connection ping
+		fmt.Fprintf(w, ": connected\n\n")
+		if err := w.Flush(); err != nil {
+			return
+		}
+
+		// Keep-alive heartbeat every 15s to prevent idle connection timeout
+		ticker := time.NewTicker(15 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				fmt.Fprintf(w, ": ping\n\n")
+				if err := w.Flush(); err != nil {
+					return
+				}
+			case msg, ok := <-ch:
+				if !ok {
+					return
+				}
+				dataBytes, err := json.Marshal(msg.Data)
+				if err != nil {
+					continue
+				}
+				fmt.Fprintf(w, "event: %s\ndata: %s\n\n", msg.Event, string(dataBytes))
+				if err := w.Flush(); err != nil {
+					return
+				}
+			}
+		}
+	}))
+
+	return nil
 }
 
 func getDashboardData(c *fiber.Ctx) error {
