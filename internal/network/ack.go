@@ -65,9 +65,10 @@ func handleAckBlock(_ paho.Client, msg paho.Message) {
 				"points":         u.Points,
 			})
 			events.Global.Broadcast("user_update", map[string]interface{}{
-				"mac":    mac,
-				"status": u.Status,
-				"time":   u.Time,
+				"mac":            mac,
+				"status":         u.Status,
+				"time":           u.Time,
+				"time_formatted": events.FormatHumanTime(u.Time),
 			})
 		}
 		logger.SystemLog("[ACK] Router successfully blocked: " + mac)
@@ -109,14 +110,15 @@ func handleAckAllow(_ paho.Client, msg paho.Message) {
 				"points":         u.Points,
 			})
 			events.Global.Broadcast("user_connected", map[string]interface{}{
-				"mac":          mac,
-				"ip":           u.IP,
-				"time":         u.Time,
-				"status":       "connected",
-				"status_short": "c",
-				"balance":      u.Balance,
-				"points":       u.Points,
-				"device_name":  u.Hostname,
+				"mac":            mac,
+				"ip":             u.IP,
+				"time":           u.Time,
+				"time_formatted": events.FormatHumanTime(u.Time),
+				"status":         "connected",
+				"status_short":   "c",
+				"balance":        u.Balance,
+				"points":         u.Points,
+				"device_name":    u.Hostname,
 			})
 		}
 		logger.SystemLog("[ACK] Router successfully allowed: " + mac)

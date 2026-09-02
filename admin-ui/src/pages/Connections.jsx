@@ -97,6 +97,8 @@ export default function Connections() {
       setData(prev => {
         if (!prev) return prev;
         const existing = prev.users?.[payload.mac] || {};
+        const timeVal = payload.time !== undefined ? Number(payload.time) : (Number(existing.time) || 0);
+        const formattedTime = payload.time_formatted || formatHumanTime(timeVal);
         return {
           ...prev,
           active_users: payload.active_users !== undefined ? payload.active_users : (prev.active_users || 0) + 1,
@@ -105,14 +107,14 @@ export default function Connections() {
             ...prev.users,
             [payload.mac]: {
               ...existing,
-              ip: payload.ip || existing.ip,
-              time: payload.time !== undefined ? payload.time : existing.time,
-              time_formatted: payload.time_formatted || existing.time_formatted,
+              ip: payload.ip || existing.ip || '',
+              time: timeVal,
+              time_formatted: formattedTime,
               status: payload.status || 'connected',
-              status_short: payload.status_short || 'c',
-              balance: payload.balance !== undefined ? payload.balance : existing.balance,
-              points: payload.points !== undefined ? payload.points : existing.points,
-              device_name: payload.device_name || existing.device_name,
+              status_short: (payload.status || 'connected')[0],
+              balance: payload.balance !== undefined ? payload.balance : (existing.balance || 0),
+              points: payload.points !== undefined ? payload.points : (existing.points || 0),
+              device_name: payload.device_name || existing.device_name || 'Unknown Device',
             }
           }
         };
@@ -120,14 +122,11 @@ export default function Connections() {
     },
     user_update: (payload) => {
       setData(prev => {
-        if (!prev || !prev.users) return prev;
-        const existing = prev.users[payload.mac];
-        if (!existing) {
-          if (payload.active_users !== undefined) {
-            return { ...prev, active_users: payload.active_users };
-          }
-          return prev;
-        }
+        if (!prev) return prev;
+        const existing = prev.users?.[payload.mac] || {};
+        const timeVal = payload.time !== undefined ? Number(payload.time) : (Number(existing.time) || 0);
+        const formattedTime = payload.time_formatted || formatHumanTime(timeVal);
+        const statusVal = payload.status || existing.status || 'connected';
         return {
           ...prev,
           active_users: payload.active_users !== undefined ? payload.active_users : prev.active_users,
@@ -135,12 +134,14 @@ export default function Connections() {
             ...prev.users,
             [payload.mac]: {
               ...existing,
-              status: payload.status || existing.status,
-              status_short: payload.status ? payload.status[0] : existing.status_short,
-              time: payload.time !== undefined ? payload.time : existing.time,
-              time_formatted: payload.time_formatted || existing.time_formatted,
-              balance: payload.balance !== undefined ? payload.balance : existing.balance,
-              points: payload.points !== undefined ? payload.points : existing.points,
+              ip: payload.ip || existing.ip || '',
+              device_name: payload.device_name || existing.device_name || 'Unknown Device',
+              status: statusVal,
+              status_short: statusVal[0],
+              time: timeVal,
+              time_formatted: formattedTime,
+              balance: payload.balance !== undefined ? payload.balance : (existing.balance || 0),
+              points: payload.points !== undefined ? payload.points : (existing.points || 0),
             }
           }
         };
@@ -351,7 +352,7 @@ export default function Connections() {
                                ★ {u.points}
                              </span>
                            )}
-                           <div className="font-semibold text-sm text-gray-900 dark:text-white">{u.time > 0 ? u.time_formatted : '0s'}</div>
+                           <div className="font-semibold text-sm text-gray-900 dark:text-white">{u.time > 0 ? (u.time_formatted || formatHumanTime(u.time)) : '0s'}</div>
                         </div>
                       </td>
                     </tr>
@@ -400,7 +401,7 @@ export default function Connections() {
                       {u.points > 0 && (
                         <div className="text-[10px] text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">★ {u.points}</div>
                       )}
-                      <div className="font-bold text-gray-900 dark:text-gray-100 text-[15px]">{u.time > 0 ? u.time_formatted : '0s'}</div>
+                      <div className="font-bold text-gray-900 dark:text-gray-100 text-[15px]">{u.time > 0 ? (u.time_formatted || formatHumanTime(u.time)) : '0s'}</div>
                     </div>
                   </div>
                 </div>

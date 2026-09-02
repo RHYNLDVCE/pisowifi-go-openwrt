@@ -1,6 +1,8 @@
 package events
 
 import (
+	"fmt"
+	"strings"
 	"sync"
 )
 
@@ -64,4 +66,40 @@ func (b *SSEBroker) ClientCount() int {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	return len(b.clients)
+}
+
+// FormatHumanTime formats seconds into human-readable strings like "1h 30m 15s"
+func FormatHumanTime(seconds int) string {
+	if seconds <= 0 {
+		return "0s"
+	}
+	y := seconds / 31536000
+	mo := (seconds % 31536000) / 2592000
+	d := (seconds % 2592000) / 86400
+	h := (seconds % 86400) / 3600
+	m := (seconds % 3600) / 60
+	s := seconds % 60
+
+	var parts []string
+	if y > 0 {
+		parts = append(parts, fmt.Sprintf("%dy", y))
+	}
+	if mo > 0 {
+		parts = append(parts, fmt.Sprintf("%dmo", mo))
+	}
+	if d > 0 {
+		parts = append(parts, fmt.Sprintf("%dd", d))
+	}
+	if y == 0 && mo == 0 && d == 0 {
+		if h > 0 {
+			parts = append(parts, fmt.Sprintf("%dh", h))
+		}
+		if m > 0 {
+			parts = append(parts, fmt.Sprintf("%dm", m))
+		}
+		parts = append(parts, fmt.Sprintf("%ds", s))
+	} else {
+		parts = append(parts, fmt.Sprintf("%dh %dm", h, m))
+	}
+	return strings.Join(parts, " ")
 }
