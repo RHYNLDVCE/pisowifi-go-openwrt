@@ -149,26 +149,6 @@ func TickUsers(ticks int) {
 	if len(toSync) > 0 {
 		db.SyncMultipleUsers(toSync)
 	}
-
-	// Broadcast lightweight timer sync to admin dashboard every 3 ticks if admins are connected
-	if ticks%3 == 0 && events.Global.ClientCount() > 0 {
-		activeBatch := make(map[string]map[string]interface{})
-		activeCount := 0
-		state.Users.Range(func(m string, u *state.UserRecord) {
-			if u.Status == "connected" {
-				activeCount++
-				activeBatch[m] = map[string]interface{}{
-					"time":           u.Time,
-					"time_formatted": FormatHumanTime(u.Time),
-					"status":         u.Status,
-				}
-			}
-		})
-		events.Global.Broadcast("batch_time_sync", map[string]interface{}{
-			"users":        activeBatch,
-			"active_users": activeCount,
-		})
-	}
 }
 
 // CheckSlotExpiry closes the coin slot if its timer has elapsed.

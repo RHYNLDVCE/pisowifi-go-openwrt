@@ -6,6 +6,29 @@ import CustomSelect from '../components/CustomSelect';
 import LoadingSpinner from '../components/LoadingSpinner';
 import useAdminEvents from '../hooks/useAdminEvents';
 
+function formatHumanTime(seconds) {
+  if (!seconds || seconds <= 0) return "0s";
+  const y = Math.floor(seconds / 31536000);
+  const mo = Math.floor((seconds % 31536000) / 2592000);
+  const d = Math.floor((seconds % 2592000) / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+
+  const parts = [];
+  if (y > 0) parts.push(`${y}y`);
+  if (mo > 0) parts.push(`${mo}mo`);
+  if (d > 0) parts.push(`${d}d`);
+  if (y === 0 && mo === 0 && d === 0) {
+    if (h > 0) parts.push(`${h}h`);
+    if (m > 0) parts.push(`${m}m`);
+    parts.push(`${s}s`);
+  } else {
+    parts.push(`${h}h ${m}m`);
+  }
+  return parts.join(' ');
+}
+
 export default function Connections() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -155,32 +178,33 @@ export default function Connections() {
           users: copy
         };
       });
-    },
-    batch_time_sync: (payload) => {
+    }
+  });
+
+  // Real-time client-side countdown timer for connected users (no backend polling needed)
+  useEffect(() => {
+    const timer = setInterval(() => {
       setData(prev => {
         if (!prev || !prev.users) return prev;
-        let changed = false;
+        let hasConnected = false;
         const updatedUsers = { ...prev.users };
-        for (const [mac, uData] of Object.entries(payload.users || {})) {
-          if (updatedUsers[mac]) {
-            changed = true;
+        for (const [mac, u] of Object.entries(updatedUsers)) {
+          if (u.status === 'connected' && u.time > 0) {
+            hasConnected = true;
+            const newTime = u.time - 1;
             updatedUsers[mac] = {
-              ...updatedUsers[mac],
-              time: uData.time,
-              time_formatted: uData.time_formatted,
-              status: uData.status,
-              status_short: uData.status ? uData.status[0] : updatedUsers[mac].status_short
+              ...u,
+              time: newTime,
+              time_formatted: formatHumanTime(newTime)
             };
           }
         }
-        return {
-          ...prev,
-          active_users: payload.active_users !== undefined ? payload.active_users : prev.active_users,
-          users: changed ? updatedUsers : prev.users
-        };
+        return hasConnected ? { ...prev, users: updatedUsers } : prev;
       });
-    }
-  });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   if (loading && !data) {
     return <LoadingSpinner message="Loading connections..." />;
