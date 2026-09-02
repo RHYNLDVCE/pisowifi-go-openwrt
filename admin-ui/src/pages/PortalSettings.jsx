@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Save, Activity, MonitorSmartphone, Volume2, Timer, Image, Trash2, Upload, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../components/ConfirmModal';
-import { SkeletonWrapper } from 'react-skeletonify';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function PortalSettings() {
   const [data, setData] = useState(null);
@@ -25,7 +25,7 @@ export default function PortalSettings() {
   const closeModal = () => setModalConfig({ ...modalConfig, isOpen: false });
 
   const fetchData = () => {
-    fetch('/admin/api/dashboard_data')
+    fetch('/admin/api/settings')
       .then(res => res.json())
       .then(json => {
         setData(json);
@@ -161,13 +161,13 @@ export default function PortalSettings() {
     setSavingOrder(false);
   };
 
-  if (!loading && !data) return <div className="text-red-500">Error loading settings.</div>;
+  if (loading && !data) return <LoadingSpinner message="Loading portal settings..." />;
+  if (!loading && !data) return <div className="text-red-500 font-bold p-6">Error loading settings.</div>;
 
   const safeData = data || { banner_text: '', banner_link: '', sound_files: [] };
 
   return (
-    <SkeletonWrapper loading={loading}>
-        <div className="space-y-6 relative">
+    <div className="space-y-6 relative">
           <ConfirmModal 
         isOpen={modalConfig.isOpen}
         title={modalConfig.title}
@@ -454,6 +454,5 @@ export default function PortalSettings() {
         </div>
       </form>
     </div>
-    </SkeletonWrapper>
   );
 }

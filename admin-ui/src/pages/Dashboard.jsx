@@ -2,14 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { Users, Coins, Clock, TrendingUp, TrendingDown, BarChart2, Sun, Calendar, CalendarDays, Landmark, Activity } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Link } from 'react-router-dom';
-import { SkeletonWrapper } from 'react-skeletonify';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function Dashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/admin/api/dashboard_data')
+    fetch('/admin/api/dashboard_stats')
       .then(res => res.json())
       .then(json => {
         setData(json);
@@ -21,17 +21,20 @@ export default function Dashboard() {
       });
   }, []);
 
+  if (loading && !data) {
+    return <LoadingSpinner message="Loading dashboard metrics..." />;
+  }
+
   if (!loading && !data) {
-    return <div className="text-red-500">Error loading data.</div>;
+    return <div className="text-red-500 font-bold p-6">Error loading data.</div>;
   }
 
   const stats = data?.stats || { 
-    total: 0, yesterday: 0, daily: 0, weekly: 0, monthly: 0, yearly: 0, last_month: 0, chart_data: [{date: 'a', total: 0}, {date: 'b', total: 0}, {date: 'c', total: 0}]
+    total: 0, yesterday: 0, daily: 0, weekly: 0, monthly: 0, yearly: 0, last_month: 0, chart_data: []
   };
 
   return (
-    <SkeletonWrapper loading={loading}>
-        <div className="space-y-6">
+    <div className="space-y-6">
           
           {/* 6 KPI Cards (Enterprise Style) */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
@@ -114,7 +117,6 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </div>
       </div>
-      </div>
-    </SkeletonWrapper>
+    </div>
   );
 }

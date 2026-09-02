@@ -51,6 +51,12 @@ export default defineConfig({
       },
       output: {
         manualChunks(id) {
+          if (id.includes('node_modules/recharts') || id.includes('d3-') || id.includes('victory-vendor')) {
+            return 'recharts';
+          }
+          if (id.includes('node_modules/lucide-react')) {
+            return 'lucide';
+          }
           if (id.includes('node_modules')) {
             return 'vendor';
           }

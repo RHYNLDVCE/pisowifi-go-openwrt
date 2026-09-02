@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Terminal, Search, X } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
-import { SkeletonWrapper } from 'react-skeletonify';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function Logs() {
   const [logs, setLogs] = useState([]);
@@ -153,13 +153,13 @@ export default function Logs() {
     return '';
   };
 
-  let displayLogs = filteredLogs;
   if (loading && logs.length === 0) {
-    displayLogs = Array(5).fill({ timestamp: '...', type: 'SYSTEM', message: 'Loading logs...' });
+    return <LoadingSpinner message="Loading system logs..." />;
   }
 
+  let displayLogs = filteredLogs;
+
   return (
-    <SkeletonWrapper loading={loading}>
     <div className="w-full">
       {/* Filter and Search Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
@@ -247,6 +247,5 @@ export default function Logs() {
         </div>
       </div>
     </div>
-    </SkeletonWrapper>
   );
 }

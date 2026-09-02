@@ -77,6 +77,7 @@ func ProcessCoin(pulses int, mac string) {
 		Balance: user.Balance, FreeClaimed: user.FreeClaimed, Points: user.Points,
 	})
 	db.AddSale(mac, amount)
+	InvalidateDashboardStatsCache()
 
 	logger.SystemLog(fmt.Sprintf("[COIN-SUCCESS] Credited %d to %s. Balance: %d", amount, mac, user.Balance))
 

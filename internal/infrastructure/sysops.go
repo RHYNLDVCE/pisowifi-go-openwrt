@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"pisowifi/internal/config"
@@ -128,6 +129,13 @@ var typeMap = map[string][]string{
 	"SECURITY": {"SECURITY-ALERT", "CRITICAL"},
 }
 
+var (
+	logCacheMu     sync.Mutex
+	lastLogModTime time.Time
+	lastLogSize    int64
+	cachedAllLogs  []LogEntry
+)
+
 func GetSystemLogs(limit, offset int, logType, query string) LogResult {
 	f, err := os.Open("system.log")
 	if err != nil {
@@ -135,30 +143,52 @@ func GetSystemLogs(limit, offset int, logType, query string) LogResult {
 	}
 	defer f.Close()
 
-	var parsed []LogEntry
-	scanner := bufio.NewScanner(f)
-	
-	lowerQuery := ""
-	if query != "" {
-		lowerQuery = strings.ToLower(query)
+	stat, err := f.Stat()
+	if err != nil {
+		return LogResult{Logs: []LogEntry{}, Limit: limit}
 	}
 
-	for scanner.Scan() {
-		line := scanner.Text()
-		
-		// If query is provided, skip lines that don't match
-		if lowerQuery != "" && !strings.Contains(strings.ToLower(line), lowerQuery) {
-			continue
-		}
-
-		if m := logPattern.FindStringSubmatch(line); m != nil {
-			parsed = append(parsed, LogEntry{Timestamp: m[1], Type: m[2], Message: m[3]})
-		} else if strings.HasPrefix(line, "[") {
-			idx := strings.Index(line, "]")
-			if idx > 0 {
-				parsed = append(parsed, LogEntry{Timestamp: line[1:idx], Type: "SYSTEM", Message: strings.TrimSpace(line[idx+1:])})
+	var allLogs []LogEntry
+	logCacheMu.Lock()
+	if cachedAllLogs != nil && stat.ModTime().Equal(lastLogModTime) && stat.Size() == lastLogSize {
+		allLogs = cachedAllLogs
+		logCacheMu.Unlock()
+	} else {
+		logCacheMu.Unlock()
+		scanner := bufio.NewScanner(f)
+		var fresh []LogEntry
+		for scanner.Scan() {
+			line := scanner.Text()
+			if m := logPattern.FindStringSubmatch(line); m != nil {
+				fresh = append(fresh, LogEntry{Timestamp: m[1], Type: m[2], Message: m[3]})
+			} else if strings.HasPrefix(line, "[") {
+				idx := strings.Index(line, "]")
+				if idx > 0 {
+					fresh = append(fresh, LogEntry{Timestamp: line[1:idx], Type: "SYSTEM", Message: strings.TrimSpace(line[idx+1:])})
+				}
 			}
 		}
+		logCacheMu.Lock()
+		cachedAllLogs = fresh
+		lastLogModTime = stat.ModTime()
+		lastLogSize = stat.Size()
+		allLogs = fresh
+		logCacheMu.Unlock()
+	}
+
+	var parsed []LogEntry
+	lowerQuery := strings.ToLower(query)
+	if lowerQuery != "" {
+		for _, e := range allLogs {
+			if strings.Contains(strings.ToLower(e.Timestamp), lowerQuery) ||
+				strings.Contains(strings.ToLower(e.Type), lowerQuery) ||
+				strings.Contains(strings.ToLower(e.Message), lowerQuery) {
+				parsed = append(parsed, e)
+			}
+		}
+	} else {
+		parsed = make([]LogEntry, len(allLogs))
+		copy(parsed, allLogs)
 	}
 
 	// Filter by type
@@ -349,28 +379,63 @@ func getMemInfo() (percent, usedGB, totalGB float64) {
 	return
 }
 
+var (
+	diskCacheMu    sync.RWMutex
+	lastDiskFetch  time.Time
+	cachedDiskPct  float64
+	cachedDiskFree float64
+)
+
 func getDiskInfo(path string) (percent, freeGB float64) {
-	// Use df command — statvfs syscall requires cgo on some targets
-	out, err := exec.Command("df", "-B1", path).Output()
-	if err != nil {
-		return
+	diskCacheMu.RLock()
+	if time.Since(lastDiskFetch) < 30*time.Second && cachedDiskPct > 0 {
+		pct, free := cachedDiskPct, cachedDiskFree
+		diskCacheMu.RUnlock()
+		return pct, free
 	}
-	lines := strings.Split(string(out), "\n")
-	if len(lines) < 2 {
-		return
+	diskCacheMu.RUnlock()
+
+	diskCacheMu.Lock()
+	defer diskCacheMu.Unlock()
+
+	if time.Since(lastDiskFetch) < 30*time.Second && cachedDiskPct > 0 {
+		return cachedDiskPct, cachedDiskFree
 	}
-	fields := strings.Fields(lines[1])
-	if len(fields) < 5 {
-		return
-	}
-	var total, used, free uint64
-	fmt.Sscan(fields[1], &total)
-	fmt.Sscan(fields[2], &used)
-	fmt.Sscan(fields[3], &free)
-	if total > 0 {
+
+	var stat syscall.Statfs_t
+	if err := syscall.Statfs(path, &stat); err == nil && stat.Blocks > 0 {
+		total := stat.Blocks * uint64(stat.Bsize)
+		free := stat.Bavail * uint64(stat.Bsize)
+		used := total - free
 		percent = math.Round(float64(used)/float64(total)*100*10) / 10
+		freeGB = math.Round(float64(free)/1024/1024/1024*100) / 100
+		cachedDiskPct = percent
+		cachedDiskFree = freeGB
+		lastDiskFetch = time.Now()
+		return
 	}
-	freeGB = math.Round(float64(free)/1024/1024/1024*100) / 100
+
+	// Fallback to df command if Statfs is unavailable
+	out, err := exec.Command("df", "-B1", path).Output()
+	if err == nil {
+		lines := strings.Split(string(out), "\n")
+		if len(lines) >= 2 {
+			fields := strings.Fields(lines[1])
+			if len(fields) >= 5 {
+				var total, used, free uint64
+				fmt.Sscan(fields[1], &total)
+				fmt.Sscan(fields[2], &used)
+				fmt.Sscan(fields[3], &free)
+				if total > 0 {
+					percent = math.Round(float64(used)/float64(total)*100*10) / 10
+				}
+				freeGB = math.Round(float64(free)/1024/1024/1024*100) / 100
+			}
+		}
+	}
+	cachedDiskPct = percent
+	cachedDiskFree = freeGB
+	lastDiskFetch = time.Now()
 	return
 }
 

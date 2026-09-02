@@ -4,6 +4,7 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"pisowifi/internal/config"
@@ -33,7 +34,34 @@ type DashboardStats struct {
 	ChartData []DailyStat `json:"chart_data"`
 }
 
+var (
+	statsCacheMu   sync.RWMutex
+	cachedStats    DashboardStats
+	lastStatsFetch time.Time
+)
+
+func InvalidateDashboardStatsCache() {
+	statsCacheMu.Lock()
+	lastStatsFetch = time.Time{}
+	statsCacheMu.Unlock()
+}
+
 func GetDashboardStats() DashboardStats {
+	statsCacheMu.RLock()
+	if time.Since(lastStatsFetch) < 10*time.Second && cachedStats.Total > 0 {
+		res := cachedStats
+		statsCacheMu.RUnlock()
+		return res
+	}
+	statsCacheMu.RUnlock()
+
+	statsCacheMu.Lock()
+	defer statsCacheMu.Unlock()
+
+	if time.Since(lastStatsFetch) < 10*time.Second && cachedStats.Total > 0 {
+		return cachedStats
+	}
+
 	now := time.Now()
 
 	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
@@ -59,7 +87,7 @@ func GetDashboardStats() DashboardStats {
 		})
 	}
 
-	return DashboardStats{
+	cachedStats = DashboardStats{
 		Total:     db.GetTotalSales(),
 		Yesterday: db.GetSalesRange(yesterday.Unix(), startOfDay.Unix()),
 		Daily:     db.GetSalesSince(startOfDay.Unix()),
@@ -69,6 +97,8 @@ func GetDashboardStats() DashboardStats {
 		Yearly:    db.GetSalesSince(startOfYear.Unix()),
 		ChartData: chartData,
 	}
+	lastStatsFetch = time.Now()
+	return cachedStats
 }
 
 // ManageUserTime adds or subtracts time for a user. Mirrors admin_service.py.
@@ -133,11 +163,9 @@ func DeleteUser(mac string) {
 	db.DeleteUser(mac)
 }
 
-// GetPaginatedUsers retrieves and formats users for the dashboard
-func GetPaginatedUsers(search string, page int, sortBy string, itemsPerPage int) map[string]interface{} {
+// GetUsersList retrieves and formats users strictly for the Connections page (zero pings, in-memory)
+func GetUsersList(search string, page int, sortBy string, itemsPerPage int) map[string]interface{} {
 	cfg := config.Get()
-	stats := GetDashboardStats()
-	
 	customNames := cfg.CustomDeviceNames
 
 	type enriched struct {
@@ -147,10 +175,15 @@ func GetPaginatedUsers(search string, page int, sortBy string, itemsPerPage int)
 	}
 
 	var users []enriched
+	activeCount := 0
+
 	state.Users.Range(func(mac string, u *state.UserRecord) {
-		name, _ := infrastructure.GetVendorInfo(mac, u.IP)
-		if customNames[mac] != "" {
-			name = customNames[mac]
+		if u.Status == "connected" {
+			activeCount++
+		}
+		name := customNames[mac]
+		if name == "" {
+			name, _ = infrastructure.GetVendorInfo(mac, u.IP)
 		}
 		users = append(users, enriched{MAC: mac, Data: u, Name: name})
 	})
@@ -222,38 +255,33 @@ func GetPaginatedUsers(search string, page int, sortBy string, itemsPerPage int)
 			shortStatus = string(u.Data.Status[0])
 		}
 		usersMap[u.MAC] = map[string]interface{}{
-			"ip": u.Data.IP, "time": u.Data.Time, "status": u.Data.Status,
-			"balance": u.Data.Balance, "points": u.Data.Points,
-			"free_claimed": u.Data.FreeClaimed, "device_name": u.Name,
+			"ip":             u.Data.IP,
+			"time":           u.Data.Time,
+			"status":         u.Data.Status,
+			"balance":        u.Data.Balance,
+			"points":         u.Data.Points,
+			"free_claimed":   u.Data.FreeClaimed,
+			"device_name":    u.Name,
 			"time_formatted": FormatHumanTime(u.Data.Time),
 			"status_short":   shortStatus,
 		}
 	}
 
-	activeMacs := map[string]bool{}
-	state.Users.Range(func(mac string, u *state.UserRecord) {
-		if u.Status != "new" {
-			activeMacs[mac] = true
-		}
-	})
-	devices := infrastructure.ScanInfrastructure(activeMacs, customNames, cfg.CustomDeviceIPs)
-
-	activeCount := 0
-	state.Users.Range(func(_ string, u *state.UserRecord) {
-		if u.Status == "connected" {
-			activeCount++
-		}
-	})
-
 	return map[string]interface{}{
 		"users":          usersMap,
-		"devices":        devices,
 		"current_page":   page,
 		"total_pages":    totalPages,
 		"search_query":   search,
 		"active_users":   activeCount,
 		"total_users":    state.Users.Count(),
 		"total_filtered": totalFiltered,
-		"stats":          stats,
 	}
+}
+
+// GetPaginatedUsers retrieves and formats users for legacy dashboard_data callers
+func GetPaginatedUsers(search string, page int, sortBy string, itemsPerPage int) map[string]interface{} {
+	res := GetUsersList(search, page, sortBy, itemsPerPage)
+	res["stats"] = GetDashboardStats()
+	res["devices"] = []infrastructure.Device{}
+	return res
 }

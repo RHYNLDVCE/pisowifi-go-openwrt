@@ -35,6 +35,9 @@ func RegisterAdminRoutes(app *fiber.App) {
 	// Protected admin group
 	admin := app.Group("/admin", security.AdminMiddleware)
 	admin.Get("/api/dashboard_data", getDashboardData)
+	admin.Get("/api/dashboard_stats", getDashboardStatsAPI)
+	admin.Get("/api/users", getUsersAPI)
+	admin.Get("/api/settings", getSettingsAPI)
 	admin.Get("/system_stats", getSystemStats)
 	admin.Get("/get_infrastructure_devices", getInfrastructureDevices)
 	admin.Get("/api/logs", getLogsJSON)
@@ -141,6 +144,54 @@ func logoutAction(c *fiber.Ctx) error {
 
 const itemsPerPage = 10
 
+func getDashboardStatsAPI(c *fiber.Ctx) error {
+	return c.JSON(fiber.Map{
+		"stats": services.GetDashboardStats(),
+	})
+}
+
+func getUsersAPI(c *fiber.Ctx) error {
+	search := c.Query("search", "")
+	page := c.QueryInt("page", 1)
+	sortBy := c.Query("sort", "status")
+	return c.JSON(services.GetUsersList(search, page, sortBy, itemsPerPage))
+}
+
+func getSettingsAPI(c *fiber.Ctx) error {
+	cfg := config.Get()
+	bannerFiles := infrastructure.GetBanners(cfg.BannerOrder)
+	soundFiles := infrastructure.GetSounds()
+
+	return c.JSON(fiber.Map{
+		"slot_timeout":          cfg.SlotTimeout,
+		"sqm_enabled":           cfg.SQMEnabled,
+		"sqm_upload_mbps":       cfg.SQMUploadMbps,
+		"sqm_download_mbps":     cfg.SQMDownloadMbps,
+		"inactive_timeout":      cfg.InactiveTimeout,
+		"auto_pause_enabled":    cfg.AutoPauseEnabled,
+		"speed_limit_enabled":   cfg.SpeedLimitEnabled,
+		"global_speed_limit":    cfg.GlobalSpeedLimit,
+		"gaming_mode_enabled":   cfg.GamingModeEnabled,
+		"udp_priority_enabled":  cfg.UDPPriorityEnabled,
+		"coin_rates":            cfg.CoinRates,
+		"banner_text":           cfg.BannerText,
+		"banner_link":           cfg.BannerLink,
+		"portal_title":          cfg.PortalTitle,
+		"portal_title_color":    cfg.PortalTitleColor,
+		"portal_title_size":     cfg.PortalTitleSize,
+		"portal_subtitle":       cfg.PortalSubtitle,
+		"portal_subtitle_size":  cfg.PortalSubtitleSize,
+		"open_nat_enabled":      cfg.OpenNATEnabled,
+		"custom_ttl":            cfg.CustomTTL,
+		"banner_files":          bannerFiles,
+		"free_time_enabled":     cfg.FreeTimeEnabled,
+		"free_time_duration":    cfg.FreeTimeDuration,
+		"sound_files":           soundFiles,
+		"sound_insert_selected": cfg.SoundInsert,
+		"sound_coin_selected":   cfg.SoundCoin,
+	})
+}
+
 func getDashboardData(c *fiber.Ctx) error {
 	search := c.Query("search", "")
 	page := c.QueryInt("page", 1)
@@ -149,7 +200,6 @@ func getDashboardData(c *fiber.Ctx) error {
 	cfg := config.Get()
 	bannerFiles := infrastructure.GetBanners(cfg.BannerOrder)
 	soundFiles := infrastructure.GetSounds()
-	logResult := infrastructure.GetSystemLogs(200, 0, "", "")
 
 	data := services.GetPaginatedUsers(search, page, sortBy, itemsPerPage)
 
@@ -180,7 +230,7 @@ func getDashboardData(c *fiber.Ctx) error {
 	data["sound_files"] = soundFiles
 	data["sound_insert_selected"] = cfg.SoundInsert
 	data["sound_coin_selected"] = cfg.SoundCoin
-	data["system_logs"] = logResult.Logs
+	data["system_logs"] = []infrastructure.LogEntry{} // Only fetched via /admin/api/logs
 
 	return c.JSON(data)
 }

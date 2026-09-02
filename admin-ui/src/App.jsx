@@ -1,22 +1,21 @@
-import React, { useEffect, useState } from 'react';
-import { SkeletonProvider } from 'react-skeletonify';
-import 'react-skeletonify/dist/index.css';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { Home, Users, Image, Activity, ShieldAlert, Sun, Moon, Menu, Wifi, MonitorSmartphone, Coins, Award, Server, LogOut, X, Clock, Settings, Ticket } from 'lucide-react';
-import Dashboard from './pages/Dashboard';
-import Connections from './pages/Connections';
-import ManageUser from './pages/ManageUser';
-import Devices from './pages/Devices';
-import Logs from './pages/Logs';
-import NetworkSettings from './pages/NetworkSettings';
-import PortalSettings from './pages/PortalSettings';
-import SessionSettings from './pages/SessionSettings';
-import CoinSettings from './pages/CoinSettings';
-import LoyaltySettings from './pages/LoyaltySettings';
-import SystemStats from './pages/SystemStats';
-import SystemSettings from './pages/SystemSettings';
-import Vouchers from './pages/Vouchers';
+
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Connections = lazy(() => import('./pages/Connections'));
+const ManageUser = lazy(() => import('./pages/ManageUser'));
+const Devices = lazy(() => import('./pages/Devices'));
+const Logs = lazy(() => import('./pages/Logs'));
+const NetworkSettings = lazy(() => import('./pages/NetworkSettings'));
+const PortalSettings = lazy(() => import('./pages/PortalSettings'));
+const SessionSettings = lazy(() => import('./pages/SessionSettings'));
+const CoinSettings = lazy(() => import('./pages/CoinSettings'));
+const LoyaltySettings = lazy(() => import('./pages/LoyaltySettings'));
+const SystemStats = lazy(() => import('./pages/SystemStats'));
+const SystemSettings = lazy(() => import('./pages/SystemSettings'));
+const Vouchers = lazy(() => import('./pages/Vouchers'));
 
 function Layout({ children }) {
   const location = useLocation();
@@ -308,34 +307,30 @@ function Layout({ children }) {
 
 export default function App() {
   return (
-    <SkeletonProvider
-      config={{
-        animation: "animation-1",
-        background: "#e5e7eb",
-        borderRadius: "8px",
-        animationSpeed: 3,
-        textTagsMargin: "8px",
-        exceptTags: ["svg"]
-      }}>
-      <BrowserRouter>
-         <Layout>
-         <Routes>
-           <Route path="/admin" element={<Dashboard />} />
-           <Route path="/admin/connections" element={<Connections />} />
-           <Route path="/admin/system" element={<SystemStats />} />
-           <Route path="/admin/network" element={<NetworkSettings />} />
-           <Route path="/admin/session" element={<SessionSettings />} />
-           <Route path="/admin/portal" element={<PortalSettings />} />
-           <Route path="/admin/coins" element={<CoinSettings />} />
-           <Route path="/admin/loyalty" element={<LoyaltySettings />} />
-           <Route path="/admin/vouchers" element={<Vouchers />} />
-           <Route path="/admin/devices" element={<Devices />} />
-           <Route path="/admin/maintenance" element={<SystemSettings />} />
-           <Route path="/admin/logs" element={<Logs />} />
-           <Route path="/admin/user/:mac" element={<ManageUser />} />
-         </Routes>
-       </Layout>
+    <BrowserRouter>
+      <Layout>
+        <Suspense fallback={
+          <div className="flex flex-col items-center justify-center min-h-[350px] gap-3 py-12">
+            <div className="w-8 h-8 border-2 border-gray-300 dark:border-zinc-700 border-t-black dark:border-t-white rounded-full animate-spin"></div>
+          </div>
+        }>
+          <Routes>
+            <Route path="/admin" element={<Dashboard />} />
+            <Route path="/admin/connections" element={<Connections />} />
+            <Route path="/admin/system" element={<SystemStats />} />
+            <Route path="/admin/network" element={<NetworkSettings />} />
+            <Route path="/admin/session" element={<SessionSettings />} />
+            <Route path="/admin/portal" element={<PortalSettings />} />
+            <Route path="/admin/coins" element={<CoinSettings />} />
+            <Route path="/admin/loyalty" element={<LoyaltySettings />} />
+            <Route path="/admin/vouchers" element={<Vouchers />} />
+            <Route path="/admin/devices" element={<Devices />} />
+            <Route path="/admin/maintenance" element={<SystemSettings />} />
+            <Route path="/admin/logs" element={<Logs />} />
+            <Route path="/admin/user/:mac" element={<ManageUser />} />
+          </Routes>
+        </Suspense>
+      </Layout>
     </BrowserRouter>
-    </SkeletonProvider>
   );
 }

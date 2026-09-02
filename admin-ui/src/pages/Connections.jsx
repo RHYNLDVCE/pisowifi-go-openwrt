@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Activity, Search, Users, ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Activity, Search, Users, ChevronDown, ChevronLeft, ChevronRight, X, Loader2 } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 
 import CustomSelect from '../components/CustomSelect';
-import { SkeletonWrapper } from 'react-skeletonify';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function Connections() {
   const [data, setData] = useState(null);
@@ -50,7 +50,7 @@ export default function Connections() {
       params.set('page', currentPage);
       params.set('sort', sortBy);
       
-      fetch(`/admin/api/dashboard_data?${params.toString()}`)
+      fetch(`/admin/api/users?${params.toString()}`)
         .then(res => res.json())
         .then(json => {
           setData(json);
@@ -58,7 +58,7 @@ export default function Connections() {
           setIsFetching(false);
         })
         .catch(err => {
-          console.error("Failed to fetch dashboard data", err);
+          console.error("Failed to fetch users data", err);
           setLoading(false);
           setIsFetching(false);
         });
@@ -67,11 +67,15 @@ export default function Connections() {
     return () => clearTimeout(timer);
   }, [searchQuery, sortBy, currentPage]);
 
-  if (!loading && !data) {
-    return <div className="text-red-500">Error loading data.</div>;
+  if (loading && !data) {
+    return <LoadingSpinner message="Loading connections..." />;
   }
 
-  const safeData = data || { users: { dummy1: { status: 'connected', device_name: 'Loading...', ip: '...', time: 0, points: 0 }, dummy2: { status: 'paused', device_name: 'Loading...', ip: '...', time: 0, points: 0 } }, total_pages: 1, current_page: 1, total_filtered: 0, total_users: 0, active_users: 0 };
+  if (!loading && !data) {
+    return <div className="text-red-500 font-bold p-6">Error loading data.</div>;
+  }
+
+  const safeData = data || { users: {}, total_pages: 1, current_page: 1, total_filtered: 0, total_users: 0, active_users: 0 };
   const { users, total_pages, current_page, total_filtered, total_users, active_users } = safeData;
 
   const statusOrder = { connected: 1, paused: 2, expired: 3, new: 4 };
@@ -101,9 +105,8 @@ export default function Connections() {
   const safeCurrentPage = current_page || 1;
 
   return (
-    <SkeletonWrapper loading={loading}>
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-md shadow-sm flex flex-col p-6 md:p-8">
+    <div className="space-y-6">
+      <div className="bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-md shadow-sm flex flex-col p-6 md:p-8">
         <div className="flex flex-wrap gap-4 justify-between items-center mb-6 pb-2 border-b border-gray-200 dark:border-zinc-800">
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex">
@@ -116,6 +119,9 @@ export default function Connections() {
                <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"></span>
                {active_users} Active
             </span>
+            {isFetching && (
+              <Loader2 size={16} className="animate-spin text-gray-400 dark:text-zinc-500 shrink-0" />
+            )}
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto pb-2 sm:pb-0">
             <CustomSelect
@@ -137,14 +143,16 @@ export default function Connections() {
                 onChange={e => setSearchQuery(e.target.value)}
                 className="pl-9 pr-10 py-2 text-sm bg-gray-50 dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded outline-none focus:ring-2 focus:ring-black dark:focus:ring-white w-full sm:w-64 transition-all" 
               />
-              {searchQuery && (
+              {isFetching ? (
+                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 animate-spin" />
+              ) : searchQuery ? (
                 <button
                   onClick={() => setSearchQuery('')}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                 >
                   <X className="w-4 h-4" />
                 </button>
-              )}
+              ) : null}
             </div>
           </div>
         </div>
@@ -288,7 +296,6 @@ export default function Connections() {
           </div>
         </div>
       </div>
-      </div>
-    </SkeletonWrapper>
+    </div>
   );
 }

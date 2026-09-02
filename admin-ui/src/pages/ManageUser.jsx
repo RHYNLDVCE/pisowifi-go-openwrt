@@ -4,7 +4,7 @@ import { ArrowLeft, Clock, ShieldBan, Trash2, Check, Activity, Star, ChevronDown
 import toast from 'react-hot-toast';
 import CustomSelect from '../components/CustomSelect';
 import ConfirmModal from '../components/ConfirmModal';
-import { SkeletonWrapper } from 'react-skeletonify';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function ManageUser() {
   const { mac } = useParams();
@@ -61,14 +61,17 @@ export default function ManageUser() {
     }
   };
 
-  if (!loading && (!data || data.error)) return <div className="text-red-500 font-bold text-xl">User not found.</div>;
+  if (loading && !data) {
+    return <LoadingSpinner message="Loading user details..." />;
+  }
 
-  const safeData = data || { user: { Status: 'connected', IP: '', Points: 0 }, device_name: 'Loading...', time_formatted: '00:00:00', history: [], vouchers: [] };
+  if (!loading && (!data || data.error)) return <div className="text-red-500 font-bold text-xl p-6">User not found.</div>;
+
+  const safeData = data || { user: { Status: 'connected', IP: '', Points: 0 }, device_name: 'Unknown Device', time_formatted: '00:00:00', history: [], vouchers: [] };
   const { user, device_name, time_formatted, history } = safeData;
 
   return (
-    <SkeletonWrapper loading={loading}>
-        <div className="space-y-6 w-full relative">
+    <div className="space-y-6 w-full relative">
 
       <ConfirmModal 
         isOpen={modalConfig.isOpen}
@@ -302,7 +305,6 @@ export default function ManageUser() {
           </div>
         </div>
       </div>
-      </div>
-    </SkeletonWrapper>
+    </div>
   );
 }

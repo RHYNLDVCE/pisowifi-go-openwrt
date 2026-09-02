@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Save, Activity, Award, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../components/ConfirmModal';
-import { SkeletonWrapper } from 'react-skeletonify';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function LoyaltySettings() {
   const [pointsConfig, setPointsConfig] = useState(null);
@@ -65,13 +65,13 @@ export default function LoyaltySettings() {
     setPointsConfig(newConfig);
   };
 
-  if (!loading && !pointsConfig) return <div className="text-red-500">Error loading settings.</div>;
+  if (loading && !pointsConfig) return <LoadingSpinner message="Loading loyalty settings..." />;
+  if (!loading && !pointsConfig) return <div className="text-red-500 font-bold p-6">Error loading settings.</div>;
 
   const safeConfig = pointsConfig || { enabled: false, coin_map: {}, promos: [] };
 
   return (
-    <SkeletonWrapper loading={loading}>
-        <div className="space-y-6 relative">
+    <div className="space-y-6 relative">
           <ConfirmModal 
         isOpen={modalConfig.isOpen}
         title={modalConfig.title}
@@ -160,6 +160,5 @@ export default function LoyaltySettings() {
         </div>
       </form>
     </div>
-    </SkeletonWrapper>
   );
 }

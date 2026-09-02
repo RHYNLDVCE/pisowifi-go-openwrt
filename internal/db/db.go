@@ -109,6 +109,12 @@ func InitDB() {
 	safeExec("ALTER TABLE users ADD COLUMN points REAL DEFAULT 0")
 	safeExec("ALTER TABLE users ADD COLUMN hostname TEXT DEFAULT ''")
 
+	// Performance Indexes
+	safeExec("CREATE INDEX IF NOT EXISTS idx_sales_timestamp ON sales(timestamp)")
+	safeExec("CREATE INDEX IF NOT EXISTS idx_sales_mac_ts ON sales(mac, timestamp DESC)")
+	safeExec("CREATE INDEX IF NOT EXISTS idx_vouchers_created_by ON vouchers(created_by)")
+	safeExec("CREATE INDEX IF NOT EXISTS idx_vouchers_status ON vouchers(status)")
+
 	// Seed default admin (fresh password hash)
 	seedAdmin()
 }

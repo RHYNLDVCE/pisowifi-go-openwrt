@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Power, CalendarClock, DatabaseBackup, Database, UploadCloud, Save, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../components/ConfirmModal';
-import { SkeletonWrapper } from 'react-skeletonify';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function SystemSettings() {
   const [schedule, setSchedule] = useState({ enabled: false, time: '03:00' });
@@ -152,8 +152,9 @@ export default function SystemSettings() {
     );
   };
 
+  if (loadingSchedule) return <LoadingSpinner message="Loading system settings..." />;
+
   return (
-    <SkeletonWrapper loading={loadingSchedule}>
     <div className="space-y-6 relative">
 
       <ConfirmModal
@@ -313,6 +314,5 @@ export default function SystemSettings() {
       </div>
 
     </div>
-    </SkeletonWrapper>
   );
 }

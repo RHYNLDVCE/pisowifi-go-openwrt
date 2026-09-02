@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Cpu, MemoryStick, HardDrive, Network, Timer, ArrowDownToLine, ArrowUpToLine, Usb, ArrowRightLeft, Server, Router, Globe } from 'lucide-react';
-import { SkeletonWrapper } from 'react-skeletonify';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function SystemStats() {
   const [loading, setLoading] = useState(true);
@@ -137,10 +137,13 @@ export default function SystemStats() {
     return parseFloat((bytesPerSec / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  if (loading && piStats.uptime === '--') {
+    return <LoadingSpinner message="Connecting to system telemetry..." />;
+  }
+
   const displayStats = activeTab === 'orangepi' ? piStats : routerStats;
 
   return (
-    <SkeletonWrapper loading={loading}>
     <div className="space-y-4 sm:space-y-6">
       
       {/* Tabs */}
@@ -284,6 +287,5 @@ export default function SystemStats() {
       </div>
 
     </div>
-    </SkeletonWrapper>
   );
 }

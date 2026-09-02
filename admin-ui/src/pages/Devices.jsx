@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Server, Wifi, RefreshCw, Activity } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { SkeletonWrapper } from 'react-skeletonify';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function Devices() {
   const [devices, setDevices] = useState([]);
@@ -111,11 +111,14 @@ export default function Devices() {
     }
   };
 
-  const safeDevices = devices.length === 0 && loading ? Array(3).fill({ vendor: 'Loading', mac: '...', ip: '...' }) : devices;
+  if (loading && devices.length === 0) {
+    return <LoadingSpinner message="Scanning network devices..." />;
+  }
+
+  const safeDevices = devices;
 
   return (
-    <SkeletonWrapper loading={loading}>
-      <div className="w-full">
+    <div className="w-full">
         <div className="flex justify-end gap-2 mb-4">
         <button 
           className="flex items-center gap-2 px-4 py-2 bg-black text-white dark:bg-white dark:text-black font-bold rounded hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors" 
@@ -288,6 +291,5 @@ export default function Devices() {
         </div>
       )}
     </div>
-    </SkeletonWrapper>
   );
 }

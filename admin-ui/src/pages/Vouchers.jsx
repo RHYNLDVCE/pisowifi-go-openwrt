@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Ticket, Search, Clock, Zap, Save, CheckCircle, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { SkeletonWrapper } from 'react-skeletonify';
+import ConfirmModal from '../components/ConfirmModal';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function Vouchers() {
   const [data, setData] = useState({ vouchers: [], voucher_enabled: false, voucher_min_time_minutes: 5, voucher_point_promos: [] });
@@ -119,11 +120,12 @@ export default function Vouchers() {
     return <div className="text-red-500">Error loading data.</div>;
   }
 
+  if (loading && !data) return <LoadingSpinner message="Loading vouchers..." />;
+
   const safeData = data || { voucher_enabled: false, voucher_min_time_minutes: 5, voucher_point_promos: [] };
 
   return (
-    <SkeletonWrapper loading={loading}>
-        <div className="space-y-6 relative">
+    <div className="space-y-6 relative">
       
       {/* Settings Form */}
       <form onSubmit={handleSaveSettings} className="bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-md shadow-sm p-6 md:p-8">
@@ -311,7 +313,6 @@ export default function Vouchers() {
           </div>
         )}
       </div>
-      </div>
-    </SkeletonWrapper>
+    </div>
   );
 }
