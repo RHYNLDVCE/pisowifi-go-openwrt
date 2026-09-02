@@ -117,12 +117,12 @@ func main() {
 
 	// Static files with browser caching
 	app.Static("/static", "./static", fiber.Static{
-		MaxAge:       86400,
-		CacheControl: true,
+		Compress: true,
+		MaxAge:   86400,
 	})
 	app.Static("/admin/assets", "./admin-ui/dist/assets", fiber.Static{
-		MaxAge:       3600 * 24 * 30, // 30 days for content-hashed assets
-		CacheControl: true,
+		Compress: true,
+		MaxAge:   3600 * 24 * 30, // 30 days for content-hashed assets
 	})
 
 	// Register all routes
