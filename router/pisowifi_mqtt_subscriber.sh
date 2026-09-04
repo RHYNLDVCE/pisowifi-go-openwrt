@@ -81,9 +81,15 @@ dump_arp_table() {
         }
     }' /tmp/dhcp.leases /proc/net/arp > /tmp/arp_dump.jsonl
     
-    local count=$(wc -l < /tmp/arp_dump.jsonl)
-    if [ "$count" -gt 0 ]; then
-        mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" -r -t "pisowifi/arp" -l < /tmp/arp_dump.jsonl 2>/dev/null
+    local count=0
+    if [ -s /tmp/arp_dump.jsonl ]; then
+        while IFS= read -r entry; do
+            if [ -n "$entry" ]; then
+                mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" -t "pisowifi/arp" -m "$entry" 2>/dev/null
+                count=$((count + 1))
+            fi
+        done < /tmp/arp_dump.jsonl
+        rm -f /tmp/arp_dump.jsonl
     fi
     logger -t pisowifi "[ARP] Dumped $count entries to Orange Pi."
 }
@@ -562,7 +568,7 @@ mosquitto_sub \
         # messages so the OrangePi can rebuild its in-memory cache.
         # ----------------------------------------------------------------
         "pisowifi/arp/request")
-            dump_arp_table
+            dump_arp_table &
             ;;
 
         # ----------------------------------------------------------------

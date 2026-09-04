@@ -53,6 +53,8 @@ var (
 func InitARPCache() {
 	mqttcmd.Subscribe("pisowifi/arp", handleARPMessage)
 	logger.SystemLog("[ARP] Subscribed to pisowifi/arp — requesting full table dump...")
+	// Clear any legacy retained pisowifi/arp/request message from the broker
+	_ = mqttcmd.PublishRetained("pisowifi/arp/request", []byte{})
 	RequestARPSync()
 }
 
@@ -72,7 +74,7 @@ func RequestARPSync() {
 	lastSyncTime = time.Now()
 	syncMu.Unlock()
 
-	if err := mqttcmd.PublishRetained("pisowifi/arp/request", map[string]string{"action": "dump"}); err != nil {
+	if err := mqttcmd.Publish("pisowifi/arp/request", map[string]string{"action": "dump"}); err != nil {
 		logger.SystemLog("[ARP] [ERROR] Failed to publish arp/request: " + err.Error())
 	}
 }
