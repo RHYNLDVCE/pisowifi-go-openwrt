@@ -27,14 +27,41 @@ const (
 
 	// reconnectWait is the time between automatic reconnect attempts.
 	reconnectWait = 5 * time.Second
+
+	// workerPublishTimeout is how long the background worker waits for a single
+	// PUBACK from the broker. Longer than the old 2s caller timeout because the
+	// worker is not blocking any hot path — it can afford to be patient.
+	workerPublishTimeout = 10 * time.Second
+
+	// publishChSize is the capacity of the async publish channel. 256 slots is
+	// enough to absorb a full burst of block+removeSpeedLimit commands for every
+	// user even on a large deployment, without ever blocking the caller.
+	publishChSize = 256
 )
 
 var mqttClient paho.Client
+
+// mqttJob is a single fire-and-forget publish request queued by Publish().
+type mqttJob struct {
+	topic   string
+	payload []byte
+}
+
+// publishCh is the channel between callers and the background worker goroutine.
+// Callers enqueue and return immediately; the worker drains at broker speed.
+var publishCh chan mqttJob
 
 // Init creates and connects the MQTT client to the router broker.
 // brokerURL example: "tcp://10.0.0.1:1883"
 // clientID:          "pisowifi-orangepi"
 func Init(brokerURL, clientID, username, password string, onConnectCb func()) {
+	// Create the async publish channel and start the single worker goroutine.
+	// The worker is the ONLY goroutine that calls mqttClient.Publish for
+	// non-retained messages, so it serialises all outgoing commands without
+	// ever blocking the caller (timer loop, session handlers, etc.).
+	publishCh = make(chan mqttJob, publishChSize)
+	go publishWorker()
+
 	opts := paho.NewClientOptions()
 	opts.AddBroker(brokerURL)
 	opts.SetClientID(clientID)
@@ -101,9 +128,29 @@ func Init(brokerURL, clientID, username, password string, onConnectCb func()) {
 	}
 }
 
-// Publish sends a JSON-encoded payload to the given topic (QoS 1, non-retained).
-// It is safe to call from any goroutine. If the client is not connected the
-// message is dropped and an error is logged — no fallback, by design.
+// publishWorker is the single background goroutine that drains publishCh.
+// It is the only place that calls mqttClient.Publish for non-retained messages,
+// so Paho's write path is never contended by multiple goroutines at once.
+// It runs until publishCh is closed (i.e. during Disconnect).
+func publishWorker() {
+	for job := range publishCh {
+		if mqttClient == nil {
+			continue
+		}
+		token := mqttClient.Publish(job.topic, qos, false, job.payload)
+		if !token.WaitTimeout(workerPublishTimeout) {
+			logger.SystemLog(fmt.Sprintf("[MQTT] [WORKER] Publish timed out: topic=%s", job.topic))
+		} else if err := token.Error(); err != nil {
+			logger.SystemLog(fmt.Sprintf("[MQTT] [WORKER] Publish error: topic=%s err=%v", job.topic, err))
+		}
+	}
+}
+
+// Publish enqueues a JSON-encoded payload for async delivery (QoS 1, non-retained).
+// It returns immediately without waiting for a broker PUBACK — the background
+// worker handles the actual send. If the channel is full (broker has been
+// unreachable long enough to fill 256 slots) the message is dropped and logged.
+// It is safe to call from any goroutine.
 func Publish(topic string, payload interface{}) error {
 	if mqttClient == nil {
 		logger.SystemLog("[MQTT] Publish attempted before Init()")
@@ -115,21 +162,20 @@ func Publish(topic string, payload interface{}) error {
 		return fmt.Errorf("mqtt marshal: %w", err)
 	}
 
-	token := mqttClient.Publish(topic, qos, false, data)
-	// WaitTimeout returns false on timeout, true otherwise
-	if !token.WaitTimeout(2 * time.Second) {
-		logger.SystemLog(fmt.Sprintf("[MQTT] Publish timed out: topic=%s", topic))
-		return fmt.Errorf("mqtt publish timeout: %s", topic)
+	select {
+	case publishCh <- mqttJob{topic: topic, payload: data}:
+		return nil
+	default:
+		// Channel full — broker has likely been down for an extended period.
+		logger.SystemLog(fmt.Sprintf("[MQTT] [WARN] Publish channel full, dropping message: topic=%s", topic))
+		return fmt.Errorf("mqtt publish channel full: %s", topic)
 	}
-	if err := token.Error(); err != nil {
-		logger.SystemLog(fmt.Sprintf("[MQTT] [ERROR] Publish error: topic=%s err=%v", topic, err))
-		return err
-	}
-	return nil
 }
 
-// PublishRetained sends a JSON-encoded payload to the given topic with the Retained flag set to true.
-// This ensures that late subscribers (like the router script on a slow boot) will still receive the message.
+// PublishRetained sends a JSON-encoded payload to the given topic with the
+// Retained flag set to true. This is intentionally synchronous because it is
+// only called at startup (firewall/init) or on explicit config reloads where
+// the caller needs to know the message was delivered before proceeding.
 func PublishRetained(topic string, payload interface{}) error {
 	if mqttClient == nil {
 		logger.SystemLog("[MQTT] PublishRetained attempted before Init()")
@@ -142,7 +188,7 @@ func PublishRetained(topic string, payload interface{}) error {
 	}
 
 	token := mqttClient.Publish(topic, qos, true, data)
-	if !token.WaitTimeout(2 * time.Second) {
+	if !token.WaitTimeout(10 * time.Second) {
 		logger.SystemLog(fmt.Sprintf("[MQTT] PublishRetained timed out: topic=%s", topic))
 		return fmt.Errorf("mqtt publish timeout: %s", topic)
 	}
@@ -167,10 +213,15 @@ func IsConnected() bool {
 	return mqttClient != nil && mqttClient.IsConnected()
 }
 
-// Disconnect cleanly disconnects from the broker during graceful shutdown.
+// Disconnect drains any pending publish jobs, then cleanly disconnects from
+// the broker during graceful shutdown.
 func Disconnect() {
+	if publishCh != nil {
+		close(publishCh) // signal the worker to stop after draining
+		publishCh = nil
+	}
 	if mqttClient != nil && mqttClient.IsConnected() {
-		mqttClient.Disconnect(500) // wait up to 500 ms to flush
+		mqttClient.Disconnect(1000) // wait up to 1s to flush in-flight messages
 		logger.SystemLog("[MQTT] Disconnected from broker.")
 	}
 }
