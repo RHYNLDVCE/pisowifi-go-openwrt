@@ -49,7 +49,7 @@ func Init(brokerURL, clientID, username, password string, onConnectCb func()) {
 	opts.SetAutoReconnect(true)
 	opts.SetMaxReconnectInterval(reconnectWait)
 	opts.SetCleanSession(false) // persist QoS 1 subscriptions across reconnects
-	opts.SetOrder(false)        // process incoming messages concurrently to prevent PUBACK deadlocks
+	opts.SetOrderMatters(false) // process incoming messages concurrently to prevent PUBACK deadlocks
 
 	// Last Will and Testament (LWT)
 	// If this client disconnects ungracefully, the broker will automatically publish this message
