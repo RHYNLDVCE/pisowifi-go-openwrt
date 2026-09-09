@@ -511,29 +511,31 @@ mosquitto_sub \
             ;;
 
         # ----------------------------------------------------------------
-        # pisowifi/speed_limit/apply {"ip":"10.0.1.5","mbps":5}
+        # pisowifi/speed_limit/apply {"ip":"10.0.1.5","download_mbps":5,"upload_mbps":5}
         # ----------------------------------------------------------------
         "pisowifi/speed_limit/apply")
-            IP=$(echo "$payload"  | jsonfilter -e '@.ip')
-            MBPS=$(echo "$payload" | jsonfilter -e '@.mbps')
+            IP=$(echo "$payload"           | jsonfilter -e '@.ip')
+            DOWNLOAD_MBPS=$(echo "$payload" | jsonfilter -e '@.download_mbps')
+            UPLOAD_MBPS=$(echo "$payload"   | jsonfilter -e '@.upload_mbps')
             LAN=$(nft list tables | grep -q pisowifi && nft list chain ip pisowifi filter_forward 2>/dev/null | grep iifname | head -1 | awk '{print $2}' | tr -d '"' || echo "br-lan")
 
-            if [ -n "$IP" ] && [ -n "$MBPS" ]; then
+            if [ -n "$IP" ] && [ -n "$DOWNLOAD_MBPS" ] && [ -n "$UPLOAD_MBPS" ]; then
                 UID=$(get_uid "$IP")
                 UID_HEX=$(printf '%x' "$UID")
-                SPEED="${MBPS}mbit"
+                DL_SPEED="${DOWNLOAD_MBPS}mbit"
+                UL_SPEED="${UPLOAD_MBPS}mbit"
 
                 # Download (Egress on $LAN)
-                tc class replace dev "$LAN" parent 1:ffff classid "1:${UID_HEX}" htb rate "$SPEED" ceil "$SPEED" burst 15k cburst 15k
-                tc qdisc replace dev "$LAN" parent "1:${UID_HEX}" handle "${UID_HEX}:" cake bandwidth "$SPEED" diffserv4 wash
+                tc class replace dev "$LAN" parent 1:ffff classid "1:${UID_HEX}" htb rate "$DL_SPEED" ceil "$DL_SPEED" burst 15k cburst 15k
+                tc qdisc replace dev "$LAN" parent "1:${UID_HEX}" handle "${UID_HEX}:" cake bandwidth "$DL_SPEED" diffserv4 wash
                 tc filter add dev "$LAN" protocol ip parent 1:0 prio "$UID" u32 match ip dst "$IP" flowid "1:${UID_HEX}"
                 
                 # Upload (Egress on ifb1, which is Ingress from $LAN)
-                tc class replace dev ifb1 parent 2:ffff classid "2:${UID_HEX}" htb rate "$SPEED" ceil "$SPEED" burst 15k cburst 15k
-                tc qdisc replace dev ifb1 parent "2:${UID_HEX}" handle "${UID_HEX}:" cake bandwidth "$SPEED" diffserv4 wash
+                tc class replace dev ifb1 parent 2:ffff classid "2:${UID_HEX}" htb rate "$UL_SPEED" ceil "$UL_SPEED" burst 15k cburst 15k
+                tc qdisc replace dev ifb1 parent "2:${UID_HEX}" handle "${UID_HEX}:" cake bandwidth "$UL_SPEED" diffserv4 wash
                 tc filter add dev ifb1 protocol ip parent 2:0 prio "$UID" u32 match ip src "$IP" flowid "2:${UID_HEX}"
                 
-                logger -t pisowifi "[SPEED] Applied ${MBPS}mbit to $IP"
+                logger -t pisowifi "[SPEED] Applied DL:${DOWNLOAD_MBPS}mbit UL:${UPLOAD_MBPS}mbit to $IP"
             fi
             ;;
 

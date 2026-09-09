@@ -76,7 +76,7 @@ export default function NetworkSettings() {
   if (loading && !data) return <LoadingSpinner message="Loading network settings..." />;
   if (!loading && !data) return <div className="text-red-500 font-bold p-6">Error loading settings.</div>;
 
-  const safeData = data || { global_speed_limit: '', sqm_download_mbps: '', sqm_upload_mbps: '', custom_ttl: 1 };
+  const safeData = data || { global_speed_limit_download: '', global_speed_limit_upload: '', sqm_download_mbps: '', sqm_upload_mbps: '', custom_ttl: 1 };
 
   return (
     <div className="space-y-6 relative">
@@ -110,14 +110,27 @@ export default function NetworkSettings() {
           </div>
           
           <div className={!toggles.speed_limit ? 'opacity-50 pointer-events-none transition-opacity duration-300' : 'transition-opacity duration-300'}>
-             <div className="max-w-sm space-y-1">
-                <label className="text-xs font-bold text-gray-500 dark:text-gray-400">Speed Limit (Mbps)</label>
-                <input 
-                  type="number" 
-                  name="speed_limit_val" 
-                  defaultValue={safeData.global_speed_limit} 
-                  className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
-                />
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+               <div className="space-y-1">
+                 <label className="text-xs font-bold text-gray-500 dark:text-gray-400">Download Limit (Mbps)</label>
+                 <input 
+                   type="number" 
+                   name="speed_limit_download" 
+                   defaultValue={safeData.global_speed_limit_download} 
+                   className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+                 />
+                 <p className="text-[10px] text-gray-500 mt-1">Max download speed per user.</p>
+               </div>
+               <div className="space-y-1">
+                 <label className="text-xs font-bold text-gray-500 dark:text-gray-400">Upload Limit (Mbps)</label>
+                 <input 
+                   type="number" 
+                   name="speed_limit_upload" 
+                   defaultValue={safeData.global_speed_limit_upload} 
+                   className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+                 />
+                 <p className="text-[10px] text-gray-500 mt-1">Max upload speed per user.</p>
+               </div>
              </div>
           </div>
         </div>

@@ -146,7 +146,7 @@ func ApplySpeedLimit(ip string) {
 	if !cfg.SpeedLimitEnabled || ip == "" {
 		return
 	}
-	if err := mqttcmd.ApplySpeedLimit(ip, cfg.GlobalSpeedLimit); err != nil {
+	if err := mqttcmd.ApplySpeedLimit(ip, cfg.GlobalSpeedLimitDownload, cfg.GlobalSpeedLimitUpload); err != nil {
 		logger.SystemLog("[FIREWALL] [ERROR] ApplySpeedLimit MQTT error for " + ip + ": " + err.Error())
 	}
 }

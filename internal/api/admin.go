@@ -173,8 +173,9 @@ func getSettingsAPI(c *fiber.Ctx) error {
 		"sqm_download_mbps":     cfg.SQMDownloadMbps,
 		"inactive_timeout":      cfg.InactiveTimeout,
 		"auto_pause_enabled":    cfg.AutoPauseEnabled,
-		"speed_limit_enabled":   cfg.SpeedLimitEnabled,
-		"global_speed_limit":    cfg.GlobalSpeedLimit,
+		"speed_limit_enabled":            cfg.SpeedLimitEnabled,
+		"global_speed_limit_download":    cfg.GlobalSpeedLimitDownload,
+		"global_speed_limit_upload":      cfg.GlobalSpeedLimitUpload,
 		"gaming_mode_enabled":   cfg.GamingModeEnabled,
 		"udp_priority_enabled":  cfg.UDPPriorityEnabled,
 		"coin_rates":            cfg.CoinRates,
@@ -264,7 +265,8 @@ func getDashboardData(c *fiber.Ctx) error {
 	data["inactive_timeout"] = cfg.InactiveTimeout
 	data["auto_pause_enabled"] = cfg.AutoPauseEnabled
 	data["speed_limit_enabled"] = cfg.SpeedLimitEnabled
-	data["global_speed_limit"] = cfg.GlobalSpeedLimit
+	data["global_speed_limit_download"] = cfg.GlobalSpeedLimitDownload
+	data["global_speed_limit_upload"] = cfg.GlobalSpeedLimitUpload
 	data["gaming_mode_enabled"] = cfg.GamingModeEnabled
 	data["udp_priority_enabled"] = cfg.UDPPriorityEnabled
 	data["coin_rates"] = cfg.CoinRates
@@ -487,8 +489,11 @@ func updateNetworkSettings(c *fiber.Ctx) error {
 		if val, ok := rawBody["sqm_download_mbps"]; ok {
 			cfg.SQMDownloadMbps = parseSettingInt(val, cfg.SQMDownloadMbps)
 		}
-		if val, ok := rawBody["speed_limit_val"]; ok {
-			cfg.GlobalSpeedLimit = parseSettingInt(val, cfg.GlobalSpeedLimit)
+		if val, ok := rawBody["speed_limit_download"]; ok {
+			cfg.GlobalSpeedLimitDownload = parseSettingInt(val, cfg.GlobalSpeedLimitDownload)
+		}
+		if val, ok := rawBody["speed_limit_upload"]; ok {
+			cfg.GlobalSpeedLimitUpload = parseSettingInt(val, cfg.GlobalSpeedLimitUpload)
 		}
 		if val, ok := rawBody["speed_limit_toggle"]; ok {
 			cfg.SpeedLimitEnabled = fmt.Sprintf("%v", val) == "on"

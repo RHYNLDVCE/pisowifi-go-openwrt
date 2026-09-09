@@ -101,8 +101,9 @@ type AppConfig struct {
 	SQMDownloadMbps        int                `json:"sqm_download_mbps"`
 	InactiveTimeout        int                `json:"inactive_timeout"`
 	AutoPauseEnabled       bool               `json:"auto_pause_enabled"`
-	SpeedLimitEnabled      bool               `json:"speed_limit_enabled"`
-	GlobalSpeedLimit       int                `json:"global_speed_limit"`
+	SpeedLimitEnabled           bool               `json:"speed_limit_enabled"`
+	GlobalSpeedLimitDownload    int                `json:"global_speed_limit_download"`
+	GlobalSpeedLimitUpload      int                `json:"global_speed_limit_upload"`
 	GamingModeEnabled      bool               `json:"gaming_mode_enabled"`
 	UDPPriorityEnabled     bool               `json:"udp_priority_enabled"`
 	InactivePacketThreshold int               `json:"inactive_packet_threshold"`
@@ -143,9 +144,10 @@ var defaultConfig = AppConfig{
 	SQMDownloadMbps:         100,
 	InactiveTimeout:         300,
 	AutoPauseEnabled:        false,
-	SpeedLimitEnabled:       false,
-	GlobalSpeedLimit:        5,
-	GamingModeEnabled:       false,
+	SpeedLimitEnabled:            false,
+	GlobalSpeedLimitDownload:     5,
+	GlobalSpeedLimitUpload:       5,
+	GamingModeEnabled:            false,
 	UDPPriorityEnabled:      false,
 	InactivePacketThreshold: 5,
 	CoinRates:               "1:10,5:60,10:180,20:300",

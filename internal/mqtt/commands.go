@@ -25,8 +25,9 @@ type macIPPayload struct {
 }
 
 type speedPayload struct {
-	IP   string `json:"ip"`
-	Mbps int    `json:"mbps"`
+	IP          string `json:"ip"`
+	DownloadMbps int   `json:"download_mbps"`
+	UploadMbps   int   `json:"upload_mbps"`
 }
 
 type firewallInitPayload struct {
@@ -63,11 +64,11 @@ func BlockUser(mac, ip string) error {
 // ---------------------------------------------------------------------------
 
 // ApplySpeedLimit tells the router to create/replace an HTB class for the IP.
-func ApplySpeedLimit(ip string, mbps int) error {
-	if ip == "" || mbps <= 0 {
-		return fmt.Errorf("ApplySpeedLimit: invalid args ip=%q mbps=%d", ip, mbps)
+func ApplySpeedLimit(ip string, downloadMbps, uploadMbps int) error {
+	if ip == "" || downloadMbps <= 0 || uploadMbps <= 0 {
+		return fmt.Errorf("ApplySpeedLimit: invalid args ip=%q download=%d upload=%d", ip, downloadMbps, uploadMbps)
 	}
-	return Publish("pisowifi/speed_limit/apply", speedPayload{IP: ip, Mbps: mbps})
+	return Publish("pisowifi/speed_limit/apply", speedPayload{IP: ip, DownloadMbps: downloadMbps, UploadMbps: uploadMbps})
 }
 
 // RemoveSpeedLimit tells the router to remove the HTB class for the IP.
